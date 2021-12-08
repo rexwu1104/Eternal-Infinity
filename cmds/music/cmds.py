@@ -54,6 +54,18 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 			ctx.author
 		)
 		await voice_controller.load()
+		voice_controller.queue_info.append({
+			'id': voice_controller.queue[0][0] \
+				.id,
+			'title': voice_controller.queue[0][0] \
+				.title,
+			'length': voice_controller.queue[0][0] \
+				.duration,
+			'thumbnail': voice_controller.queue[0][0] \
+				.thumbnail,
+			'author': voice_controller.queue[0][0] \
+				.author
+		})
 	elif not is_url and t == 'play':
 		t = await get_place(self.bot, ctx)
 		if t is None:
@@ -61,15 +73,16 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 
 		await ctx.send(template['Odd'] % (q))
 		if t == 'youtube':
-			url = await get_youtube(q)
+			url, data_info = await get_youtube(q)
 		elif t == 'spotify':
-			url = await get_spotify(q)
+			url, data_info = await get_spotify(q)
 
 		voice_controller.tmp_queue.append(
 			url,
 			ctx.author
 		)
 		await voice_controller.load()
+		voice_controller.queue_info.append(data_info)
 	elif t == 'search':
 		youtube_list = await get_youtube_list(q)
 		embed = await search_embed(youtube_list)
@@ -99,6 +112,7 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 			]
 		)
 		await voice_controller.load()
+		voice_controller.queue_info.concat(youtube_list)
 
 	if not voice_controller.in_sequence:
 		info = voice_controller.queue[0][0]
@@ -111,6 +125,7 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 			asyncio.run_coroutine_threadsafe(async_func(error), loop)
 
 		async def play_next(err : Exception):
+			await voice_controller.load()
 			if voice_controller.song_loop:
 				info = voice_controller.queue[0][0]
 				new_source = nc.PCMVolumeTransformer(
@@ -123,6 +138,7 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 				)
 			else:
 				voice_controller.queue.pop(0)
+				voice_controller.queue_info.pop(0)
 				if len(voice_controller.queue) == 0:
 					await voice_controller.client.disconnect()
 				info = voice_controller.queue[0][0]

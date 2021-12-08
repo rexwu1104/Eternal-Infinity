@@ -9,7 +9,7 @@ python = "^3.8"
 nextcord = "^2.0.0a3"
 fastapi = "^0.70.0"
 uvicorn = "^0.15.0"
-npytdl = "^4.0.1a1"
+npytdl = "^4.0.4"
 orjson = "^3.6.5"
 
 [tool.poetry.dev-dependencies]

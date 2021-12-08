@@ -9,7 +9,7 @@ ysdl = Pytdl()
 
 async def get_youtube(q : str) -> str:
 	s_l = await ysdl.resultList(q)
-	return 'https://youtu.be/' + s_l[0]['id']
+	return 'https://youtu.be/' + s_l[0]['id'], s_l[0]
 
 async def get_youtube_list(q : str) -> List[Dict]:
 	s_l = await ysdl.resultList(q)
@@ -22,4 +22,4 @@ async def get_spotify(q : str) -> str:
 		n_l[0]['title'] + '-' + \
 		n_l[0]['author'][0]['name']
 	)
-	return 'https://youtu.be/' + s_l[0]['id']
+	return 'https://youtu.be/' + s_l[0]['id'], s_l[0]

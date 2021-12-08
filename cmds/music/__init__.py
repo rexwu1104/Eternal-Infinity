@@ -27,6 +27,7 @@ class VoiceController:
 		self.queue_loop : bool = False
 		self.song_loop : bool = False
 		self.queue : List[[NPytdl.YoutubeVideo, Union[Member, User]]] = []
+		self.queue_info : List[Dict] = []
 		self.tmp_queue : List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
 		self.nowplay : NPytdl.YoutubeVideo = None
 		self.source : PCMVolumeTransformer = None
@@ -37,22 +38,48 @@ class VoiceController:
 		self.DJ : List[Union[Member, User]] = []
 
 	async def load(self):
+		if len(self.tmp_queue) == 0:
+			return
+
 		item = self.tmp_queue.pop(0)
 		if type(item[0]) == str:
 			info = await ysdl.info(item[0])
 		else:
 			info = item[0]
+			
+		await info.create()
 		if type(info) == NPytdl.YoutubeVideo:
-			await info.create()
 			self.queue.append([info, item[1]])
 		elif type(info) == NPytdl.YoutubeVideos:
-			await info.create()
+			data_info = await ysdl.playList(
+				info.url.split('=')[1]
+			)
+			self.queue_info.concat(data_info)
 			first = info.videoList.pop(0)
-			self.tmp_queue = [[i, item[1]]for i in info.videoList] + self.tmp_queue
+			self.tmp_queue = [[i, item[1]] for i in info.videoList] + self.tmp_queue
 			await first.create()
 			self.queue.append([first, item[1]])
-		# elif type(info) == NPytdl.SpotifyMusic:
-		# elif type(info) == NPytdl.SpotifyMusics:
+		elif type(info) == NPytdl.SpotifyMusic:
+			data_info = await ysdl.spotifyTrack(
+				info.url.split('/')[4]
+			)
+			self.queue_info.concat(data_info)
+			first = info.music
+			await first.create()
+			self.queue.append([first, item[1]])
+		elif type(info) == NPytdl.SpotifyMusics:
+			if info.url.find('album') != -1:
+				data_info = await ysdl.spotifyResultList(
+					info.url
+				)
+			else:
+				data_info = await ysdl.spotifyPlayList(
+					info.url.split('/')[4]
+				)
+
+			self.queue_info.concat(data_info)
+			first = info.musicList.pop(0)
+			self.tmp_queue = [[i, item[1]] for i in info.musicList] + self.tmp_queue
 
 class Music(Cog):
 
