@@ -14,13 +14,13 @@ bot = commands.Bot(
 
 @bot.event
 async def on_ready():
-	# status = nc.Streaming(
-	# 	name = 'ei!help',
-	# 	url = 'https://www.twitch.tv/yee6nextcord'
-	# )
-	# await bot.change_presence(
-	# 	activity = status
-	# )
+	await bot.change_presence(
+		activity = nc.Streaming(
+			name = 'ei!help',
+			url = 'https://www.twitch.tv/yee6nextcord'
+		)
+	)
+
 	if bot.loop.is_running():
 		from multiprocessing import Process
 		from web.backend import start_server

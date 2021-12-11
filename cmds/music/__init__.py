@@ -15,8 +15,12 @@ from typing import (
 	Union
 )
 from .cmds import (
-	play
+	_play,
+	_loop,
+	_queueloop,
+	_volume
 )
+from pprint import pprint
 
 ysdl = NPytdl.Pytdl()
 with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
@@ -24,12 +28,14 @@ with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 
 class VoiceController:
 	def __init__(self):
+		self.volume = 1.0
 		self.queue_loop : bool = False
 		self.song_loop : bool = False
 		self.queue : List[[NPytdl.YoutubeVideo, Union[Member, User]]] = []
 		self.queue_info : List[Dict] = []
 		self.tmp_queue : List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
 		self.nowplay : NPytdl.YoutubeVideo = None
+		self.now_info : Dict = {}
 		self.source : PCMVolumeTransformer = None
 		self.client : VoiceClient = None
 		self.vchannel : VoiceChannel = None
@@ -54,7 +60,7 @@ class VoiceController:
 			data_info = await ysdl.playList(
 				info.url.split('=')[1]
 			)
-			self.queue_info.concat(data_info)
+			self.queue_info += data_info
 			first = info.videoList.pop(0)
 			self.tmp_queue = [[i, item[1]] for i in info.videoList] + self.tmp_queue
 			await first.create()
@@ -63,7 +69,7 @@ class VoiceController:
 			data_info = await ysdl.spotifyTrack(
 				info.url.split('/')[4]
 			)
-			self.queue_info.concat(data_info)
+			self.queue_info += data_info
 			first = info.music
 			await first.create()
 			self.queue.append([first, item[1]])
@@ -77,9 +83,22 @@ class VoiceController:
 					info.url.split('/')[4]
 				)
 
-			self.queue_info.concat(data_info)
+			self.queue_info += data_info
 			first = info.musicList.pop(0)
 			self.tmp_queue = [[i, item[1]] for i in info.musicList] + self.tmp_queue
+
+	def reset(self):
+		self.queue_loop : bool = False
+		self.song_loop : bool = False
+		self.queue : List[[NPytdl.YoutubeVideo, Union[Member, User]]] = []
+		self.queue_info : List[Dict] = []
+		self.tmp_queue : List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
+		self.nowplay : NPytdl.YoutubeVideo = None
+		self.source : PCMVolumeTransformer = None
+		self.client : VoiceClient = None
+		self.vchannel : VoiceChannel = None
+		self.tchannel : TextChannel = None
+		self.in_sequence : bool = False
 
 class Music(Cog):
 
@@ -102,7 +121,7 @@ class Music(Cog):
 		elif q == '':
 			voice_controller.client.resume()
 			return
-		await play(self, ctx, q=q, t='play')
+		await _play(self, ctx, q=q, t='play')
 
 	@commands.command()
 	async def search(self, ctx : commands.Context, *, q : str = ''):
@@ -112,7 +131,30 @@ class Music(Cog):
 		if q == '':
 			await ctx.send(':x: **query cannot be empty!!!**')
 			return
-		await play(self, ctx, q=q, t='search')
+		await _play(self, ctx, q=q, t='search')
+
+	@commands.command()
+	async def cc(self, ctx : commands.Context):
+		voice_controller = self.guilds[ctx.guild.id]
+		pprint(voice_controller.__dict__, indent=1)
+
+	@commands.command()
+	async def loop(self, ctx : commands.Context):
+		if ctx.author.voice is None:
+			await ctx.send(template['NotInChannel']['Out'])
+			return
+		await _loop(self, ctx)
+	
+	@commands.command()
+	async def queueloop(self, ctx : commands.Context):
+		if ctx.author.voice is None:
+			await ctx.send(template['NotInChannel']['Out'])
+			return
+		await _queueloop(self, ctx)
+
+	@commands.command()
+	async def volume(self, ctx : commands.Context, vol : float):
+		await _volume(self, ctx, vol)
 
 def setup(bot : commands.Bot):
 	bot.add_cog(Music(bot))

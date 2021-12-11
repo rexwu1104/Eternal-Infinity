@@ -11,6 +11,7 @@ fastapi = "^0.70.0"
 uvicorn = "^0.15.0"
 npytdl = "^4.0.4"
 orjson = "^3.6.5"
+pynacl = "^1.4.0"
 
 [tool.poetry.dev-dependencies]
 

@@ -24,6 +24,10 @@
 		"Enable": ":repeat_one: **Enable!**",
 		"Disable": ":repeat_one: **Disable!**"
 	},
+	"QueueLoop": {
+		"Enable": ":repeat_one: **Queue Enable!**",
+		"Disable": ":repeat_one: **Queue Disable!**"
+	},
 	"Skip": ":fast_forward: **Skipped** :thumbsup:",
 	"Choose": "**Type a number to make a choice. Type** `cancel` **to exit**",
 	"Download": {

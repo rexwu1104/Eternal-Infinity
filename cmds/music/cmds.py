@@ -4,16 +4,17 @@ import asyncio
 import nextcord as nc
 from nextcord.ext import commands
 from functools import partial
+from itertools import cycle
 from .dl import (
 	get_youtube,
-	get_youtube_list,
-	get_spotify
+	get_youtube_list
 )
 from .module import (
 	get_place,
 	get_number,
 	search_embed,
-	parse_obj
+	parse_obj,
+	cycle_to_list
 )
 
 urls = [
@@ -29,8 +30,16 @@ OPTIONS = {
 with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 	template = orjson.loads(mt.read())
 
-async def play(self, ctx : commands.Context, *, q : str, t : str):
+async def _play(self, ctx : commands.Context, *, q : str, t : str):
 	voice_controller = self.guilds[ctx.guild.id]
+	if voice_controller.in_sequence and voice_controller.vchannel != ctx.author.voice.channel:
+		await ctx.send('**Excuse me, the music is not playing over.**\n**I cannot join your channel.**')
+		return
+
+	if voice_controller.queue_loop:
+		await ctx.send('**now in queue-loop mode, cannot add song**')
+		return
+		
 	if voice_controller.client is None:
 		voice_controller.client = \
 			await ctx.author.voice.channel.connect()
@@ -50,8 +59,10 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 
 	if is_url:
 		voice_controller.tmp_queue.append(
-			q,
-			ctx.author
+			[
+				q,
+				ctx.author
+			]
 		)
 		await voice_controller.load()
 		voice_controller.queue_info.append({
@@ -67,25 +78,20 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 				.author
 		})
 	elif not is_url and t == 'play':
-		t = await get_place(self.bot, ctx)
-		if t is None:
-			return
-
-		await ctx.send(template['Odd'] % (q))
-		if t == 'youtube':
-			url, data_info = await get_youtube(q)
-		elif t == 'spotify':
-			url, data_info = await get_spotify(q)
+		await ctx.send(template['Search']['Odd'] % (q))
+		url, data_info = await get_youtube(q)
 
 		voice_controller.tmp_queue.append(
-			url,
-			ctx.author
+			[
+				url,
+				ctx.author
+			]
 		)
 		await voice_controller.load()
 		voice_controller.queue_info.append(data_info)
 	elif t == 'search':
 		youtube_list = await get_youtube_list(q)
-		embed = await search_embed(youtube_list)
+		embed = search_embed(youtube_list)
 		embed.set_author(
 			name=ctx.author.name,
 			icon_url=ctx.author.avatar.url
@@ -102,54 +108,70 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 			await e.delete()
 			await ctx.send('**index out of range!!!**')
 			return
-
+		
+		await e.delete()
 		voice_controller.tmp_queue.append(
 			[
 				parse_obj(
-					youtube_list[index]
+					youtube_list[index-1]
 				),
 				ctx.author
 			]
 		)
 		await voice_controller.load()
-		voice_controller.queue_info.concat(youtube_list)
+		voice_controller.queue_info += youtube_list
 
 	if not voice_controller.in_sequence:
 		info = voice_controller.queue[0][0]
-		source = nc.PCMVolumeTransformer(nc.FFmpegPCMAudio(info.voice_url, **OPTIONS))
+		nowinfo = voice_controller.queue_info[0]
+		source = nc.PCMVolumeTransformer(
+			nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+			voice_controller.volume
+		)
 		voice_controller.source = source
 		voice_controller.nowplay = info
+		voice_controller.nowinfo = nowinfo
 		loop = voice_controller.client.loop
 
 		def handle_error(async_func, loop, error):
 			asyncio.run_coroutine_threadsafe(async_func(error), loop)
 
 		async def play_next(err : Exception):
+			print(err.__str__())
 			await voice_controller.load()
 			if voice_controller.song_loop:
 				info = voice_controller.queue[0][0]
+				nowinfo = voice_controller.queue_info[0]
 				new_source = nc.PCMVolumeTransformer(
-					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS)
+					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+					voice_controller.volume
 				)
 			elif voice_controller.queue_loop:
 				info = next(voice_controller.queue)[0]
+				nowinfo = next(voice_controller.queue_info)
 				new_source = nc.PCMVolumeTransformer(
-					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS)
+					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+					voice_controller.volume
 				)
 			else:
 				voice_controller.queue.pop(0)
 				voice_controller.queue_info.pop(0)
 				if len(voice_controller.queue) == 0:
 					await voice_controller.client.disconnect()
+					await ctx.send(template['Leave'])
+					voice_controller.reset()
 				info = voice_controller.queue[0][0]
+				nowinfo = voice_controller.queue_info[0]
 				new_source = nc.PCMVolumeTransformer(
-					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS)
+					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+					voice_controller.volume
 				)
 
 			voice_controller.source = new_source
 			voice_controller.nowplay = info
+			voice_controller.nowinfo = nowinfo
 
-			voice_controller.client.play(new_source, after=(handle_error, play_next, loop))
+			voice_controller.client.play(new_source, after=partial(handle_error, play_next, loop))
 			if not voice_controller.song_loop:
 				await ctx.send(template['Play'] % (info.title))
 
@@ -159,3 +181,60 @@ async def play(self, ctx : commands.Context, *, q : str, t : str):
 	else:
 		info = voice_controller.queue[-1][0]
 		await ctx.send(template['Add'] % (info.title))
+
+async def _loop(self, ctx : commands.Context):
+	voice_controller = self.guilds[ctx.guild.id]
+	if voice_controller.client is not None and voice_controller.vchannel != ctx.author.voice.channel:
+		await ctx.send(template['NotInChannel']['In'])
+		return
+	elif voice_controller.client is None:
+		await ctx.send(template['NotInChannel']['Out'])
+		return
+
+	if voice_controller.queue_loop and not voice_controller.song_loop:
+		voice_controller.queue_loop = False
+		voice_controller.song_loop = True
+		await ctx.send(template['Loop']['Enable'])
+	elif voice_controller.song_loop:
+		voice_controller.song_loop = False
+		await ctx.send(template['Loop']['Disable'])
+	else:
+		voice_controller.song_loop = True
+		await ctx.send(template['Loop']['Enable'])
+
+async def _queueloop(self, ctx : commands.Context):
+	voice_controller = self.guilds[ctx.guild.id]
+	if voice_controller.client is not None and voice_controller.vchannel != ctx.author.voice.channel:
+		await ctx.send(template['NotInChannel']['In'])
+		return
+	elif voice_controller.client is None:
+		await ctx.send(template['NotInChannel']['Out'])
+		return
+		
+	if not voice_controller.queue_loop and voice_controller.song_loop:
+		voice_controller.queue_loop = True
+		voice_controller.song_loop = False
+		voice_controller.queue = cycle(voice_controller.queue)
+		voice_controller.queue_info = cycle(voice_controller.queue_info)
+		await ctx.send(template['QueueLoop']['Enable'])
+	elif voice_controller.queue_loop:
+		voice_controller.queue_loop = False
+		voice_controller.queue = cycle_to_list(voice_controller.queue)
+		voice_controller.queue_info = cycle_to_list(voice_controller.queue_info)
+		await ctx.send(template['QueueLoop']['Disable'])
+	else:
+		voice_controller.queue_loop = True
+		voice_controller.queue = cycle(voice_controller.queue)
+		voice_controller.queue_info = cycle(voice_controller.queue_info)
+		await ctx.send(template['QueueLoop']['Enable'])
+
+async def _volume(self, ctx : commands.Context, vol : float):
+	voice_controller = self.guilds[ctx.guild.id]
+	voice_controller.volume = vol
+	if voice_controller.source is not None:
+		voice_controller.source.volume = vol
+
+	await ctx.send('**Volume is change to** `{}%`'.format(vol*100))
+
+async def _queue(self, ctx : commands.Context, page : int):
+	...
