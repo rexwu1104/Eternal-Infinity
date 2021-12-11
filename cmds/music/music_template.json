@@ -36,9 +36,10 @@
 	},
 	"Queue": {
 		"Now": "__Now playing:__\n[%s](%s)\n\n",
-		"Page": "**page** 1/%d",
+		"Page": "**page** %d/%d",
 		"Next": "__Up next:__\n",
 		"Item": "%d. [%s](%s)\n\n",
-		"NoSong": "__Now playing:__\nNothing, let's get this party started! :tada:"
+		"NoSong": "__Now playing:__\nNothing, let's get this party started! :tada:",
+		"Request": "\n\n`Request by: %s`"
 	}
 }

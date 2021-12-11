@@ -1,4 +1,6 @@
 import re
+import math
+import orjson
 import asyncio
 import nextcord as nc
 from nextcord.ext import commands
@@ -10,21 +12,6 @@ from typing import (
 
 with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 	template = orjson.loads(mt.read())
-
-async def get_place(bot : commands.Bot, ctx : commands.Context) -> str:
-	def check(m : nc.Message):
-		return m.content in ['spotify', 'youtube']
-
-	sr : nc.Message = await ctx.send('where do you want search? (**youtube** or **spotify**)')
-
-	try:
-		m : nc.Message = await bot.wait_for('message', check=check, timeout=60.0)
-		await sr.delete()
-	except asyncio.TimeoutError:
-		await ctx.send('**timeout!!!**')
-		return None
-
-	return m.content
 
 async def get_number(bot : commands.Bot, ctx : commands.Context) -> Union[int, str]:
 	def check(m : nc.Message):
@@ -53,7 +40,7 @@ def search_embed(youtube_list : List[Dict]) -> nc.Embed:
 	)
 	return embed
 
-def queue_embed(queue_info : List[Dict], page : int):
+def queue_embed(ctx : commands.command, queue_info : List[Dict], page : int) -> nc.Embed:
 	nowplay : Dict = queue_info[0]
 	index : int = 12 * (page - 1)
 
@@ -74,14 +61,33 @@ def queue_embed(queue_info : List[Dict], page : int):
 		except:
 			break
 
-		# description +=
+		description += template['Queue']['Item'] \
+			% (
+				index + idx,
+				info['title'] \
+					.replace('(', '\(') \
+					.replace(')', '\)'),
+				'https://youtu.be/' + info['id']
+			)
+
+	description += template['Queue']['Page'] % (
+		page,
+		math.ceil((len(queue_info) - 1) / 12) + 1
+	)
+	description += template['Queue']['Request'] % (
+		ctx.author.name + ctx.author.discriminator
+	)
+
+	embed = nc.Embed(
+		color=nc.Colour.random(),
+		description=description
+	)
+	return embed
 
 def parse_obj(obj : Dict) -> str:
 	return 'https://youtu.be/' + obj['id']
 
-def cycle_to_list(cycle) -> List:
-	saved : List = []
-
+def cycle_to_list(cycle, saved : List = []) -> List:
 	while e := next(cycle):
 		if e in saved:
 			break
@@ -89,3 +95,6 @@ def cycle_to_list(cycle) -> List:
 		saved.append(e)
 
 	return saved
+
+def jump_to_position(queue : List, pos : int):
+	...

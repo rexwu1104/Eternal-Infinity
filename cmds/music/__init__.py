@@ -18,9 +18,13 @@ from .cmds import (
 	_play,
 	_loop,
 	_queueloop,
-	_volume
+	_volume,
+	_queue
 )
 from pprint import pprint
+
+def is_owner(ctx : commands.Context) -> bool:
+	return ctx.author.id == 606472364271599621
 
 ysdl = NPytdl.Pytdl()
 with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
@@ -115,12 +119,14 @@ class Music(Cog):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
+			
 		if q == '' and not voice_controller.in_sequence:
 			await ctx.send(':x: **query cannot be empty!!!**')
 			return
 		elif q == '':
 			voice_controller.client.resume()
 			return
+
 		await _play(self, ctx, q=q, t='play')
 
 	@commands.command()
@@ -128,12 +134,15 @@ class Music(Cog):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
+
 		if q == '':
 			await ctx.send(':x: **query cannot be empty!!!**')
 			return
+
 		await _play(self, ctx, q=q, t='search')
 
 	@commands.command()
+	@commands.check(is_owner)
 	async def cc(self, ctx : commands.Context):
 		voice_controller = self.guilds[ctx.guild.id]
 		pprint(voice_controller.__dict__, indent=1)
@@ -143,6 +152,7 @@ class Music(Cog):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
+
 		await _loop(self, ctx)
 	
 	@commands.command()
@@ -150,11 +160,20 @@ class Music(Cog):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
+
 		await _queueloop(self, ctx)
 
 	@commands.command()
 	async def volume(self, ctx : commands.Context, vol : float):
 		await _volume(self, ctx, vol)
+
+	@commands.command(aliases=['q'])
+	async def queue(self, ctx : commands.Context, page : int = 1):
+		await _queue(self, ctx, page)
+
+	@commands.command()
+	async def test(self, ctx : commands.Context):
+		self.guilds[ctx.guild.id].client.stop()
 
 def setup(bot : commands.Bot):
 	bot.add_cog(Music(bot))

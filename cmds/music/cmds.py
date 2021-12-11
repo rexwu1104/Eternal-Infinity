@@ -10,9 +10,9 @@ from .dl import (
 	get_youtube_list
 )
 from .module import (
-	get_place,
 	get_number,
 	search_embed,
+	queue_embed,
 	parse_obj,
 	cycle_to_list
 )
@@ -130,14 +130,16 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 		)
 		voice_controller.source = source
 		voice_controller.nowplay = info
-		voice_controller.nowinfo = nowinfo
+		voice_controller.now_info = nowinfo
 		loop = voice_controller.client.loop
 
 		def handle_error(async_func, loop, error):
 			asyncio.run_coroutine_threadsafe(async_func(error), loop)
 
 		async def play_next(err : Exception):
-			print(err.__str__())
+			if err is not None:
+				print(err.__str__())
+				
 			await voice_controller.load()
 			if voice_controller.song_loop:
 				info = voice_controller.queue[0][0]
@@ -169,7 +171,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 
 			voice_controller.source = new_source
 			voice_controller.nowplay = info
-			voice_controller.nowinfo = nowinfo
+			voice_controller.now_info = nowinfo
 
 			voice_controller.client.play(new_source, after=partial(handle_error, play_next, loop))
 			if not voice_controller.song_loop:
@@ -194,6 +196,8 @@ async def _loop(self, ctx : commands.Context):
 	if voice_controller.queue_loop and not voice_controller.song_loop:
 		voice_controller.queue_loop = False
 		voice_controller.song_loop = True
+		voice_controller.queue = cycle_to_list(voice_controller.queue)
+		voice_controller.queue_info = cycle_to_list(voice_controller.queue_info)
 		await ctx.send(template['Loop']['Enable'])
 	elif voice_controller.song_loop:
 		voice_controller.song_loop = False
@@ -237,4 +241,25 @@ async def _volume(self, ctx : commands.Context, vol : float):
 	await ctx.send('**Volume is change to** `{}%`'.format(vol*100))
 
 async def _queue(self, ctx : commands.Context, page : int):
-	...
+	voice_controller = self.guilds[ctx.guild.id]
+	queue_info = voice_controller.queue_info \
+		if type(voice_controller.queue_info) != cycle \
+		else cycle_to_list(voice_controller.queue_info)
+
+	if (len(queue_info) - 1) / 12 + 1 < page:
+		await ctx.send('**index out of range!!!**')
+		return
+
+	await ctx.send(
+		embed=queue_embed(
+			ctx,
+			queue_info,
+			page
+		)
+	)
+
+async def _skip(self, ctx : commands.Context, pos : int):
+	voice_controller = self.guilds[ctx.guild.id]
+	queue_info = voice_controller.queue_info
+	queue = voice_controller.queue + \
+		voice_controller.tmp_queue
