@@ -19,7 +19,8 @@ from .cmds import (
 	_loop,
 	_queueloop,
 	_volume,
-	_queue
+	_queue,
+	_skip
 )
 from pprint import pprint
 
@@ -171,9 +172,9 @@ class Music(Cog):
 	async def queue(self, ctx : commands.Context, page : int = 1):
 		await _queue(self, ctx, page)
 
-	@commands.command()
-	async def test(self, ctx : commands.Context):
-		self.guilds[ctx.guild.id].client.stop()
+	@commands.command(aliases=['s'])
+	async def skip(self, ctx : commands.Context, pos : int = 1):
+		await _skip(self, ctx, pos)
 
 def setup(bot : commands.Bot):
 	bot.add_cog(Music(bot))

@@ -14,7 +14,8 @@ from .module import (
 	search_embed,
 	queue_embed,
 	parse_obj,
-	cycle_to_list
+	cycle_to_list,
+	jump_to_position
 )
 
 urls = [
@@ -76,7 +77,9 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 				.thumbnail,
 			'author': voice_controller.queue[0][0] \
 				.author
-		})
+		}) if len(voice_controller.queue_info) == 0 \
+			or type(voice_controller.tmp_queue[0]) == str \
+			else None
 	elif not is_url and t == 'play':
 		await ctx.send(template['Search']['Odd'] % (q))
 		url, data_info = await get_youtube(q)
@@ -119,7 +122,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 			]
 		)
 		await voice_controller.load()
-		voice_controller.queue_info += youtube_list
+		voice_controller.queue_info += youtube_list[index-1]
 
 	if not voice_controller.in_sequence:
 		info = voice_controller.queue[0][0]
@@ -138,7 +141,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 
 		async def play_next(err : Exception):
 			if err is not None:
-				print(err.__str__())
+				print(err)
 				
 			await voice_controller.load()
 			if voice_controller.song_loop:
@@ -246,20 +249,42 @@ async def _queue(self, ctx : commands.Context, page : int):
 		if type(voice_controller.queue_info) != cycle \
 		else cycle_to_list(voice_controller.queue_info)
 
-	if (len(queue_info) - 1) / 12 + 1 < page:
-		await ctx.send('**index out of range!!!**')
-		return
-
 	await ctx.send(
 		embed=queue_embed(
 			ctx,
 			queue_info,
-			page
+			page if len(queue_info) else 0
 		)
 	)
 
 async def _skip(self, ctx : commands.Context, pos : int):
 	voice_controller = self.guilds[ctx.guild.id]
+	if voice_controller.queue_loop:
+		await ctx.send('**In queue-loop mode cannot use skip!!!**')
+		return
+		
 	queue_info = voice_controller.queue_info
 	queue = voice_controller.queue + \
 		voice_controller.tmp_queue
+
+	if (len(queue_info) - 1 < pos or len(queue) - 1 < pos) and pos != 1:
+		await ctx.send('**index out of range!!!**')
+		return
+
+	if (len(queue_info) != 1 or len(queue) != 1) and pos == 1:
+		await ctx.send(template['Skip'])
+		client = voice_controller.client
+		voice_controller.reset()
+		client.stop()
+		return
+
+	queue_info = jump_to_position(queue_info, pos)
+	queue = jump_to_position(queue, pos)
+
+	voice_controller.queue_info = queue_info
+	voice_controller.queue = []
+	voice_controller.tmp_queue = queue
+	await voice_controller.load()
+
+	await ctx.send(template['Skip'])
+	voice_controller.client.stop()

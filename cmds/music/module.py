@@ -41,17 +41,20 @@ def search_embed(youtube_list : List[Dict]) -> nc.Embed:
 	return embed
 
 def queue_embed(ctx : commands.command, queue_info : List[Dict], page : int) -> nc.Embed:
-	nowplay : Dict = queue_info[0]
-	index : int = 12 * (page - 1)
-
 	description : str = ''
-	description += template['Queue']['Now'] \
-		% (
-			nowplay['title'] \
-				.replace('(', '\(') \
-				.replace(')', '\)'),
-			'https://youtu.be/' + nowplay['id']
-		)
+	try:
+		nowplay : Dict = queue_info[0]
+		index : int = 12 * (page - 1)
+
+		description += template['Queue']['Now'] \
+			% (
+				nowplay['title'] \
+					.replace('(', '\(') \
+					.replace(')', '\)'),
+				'https://youtu.be/' + nowplay['id']
+			)
+	except:
+		description += template['Queue']['NoSong']
 
 	for idx in range(1, 13):
 		try:
@@ -70,10 +73,14 @@ def queue_embed(ctx : commands.command, queue_info : List[Dict], page : int) -> 
 				'https://youtu.be/' + info['id']
 			)
 
-	description += template['Queue']['Page'] % (
-		page,
-		math.ceil((len(queue_info) - 1) / 12) + 1
-	)
+	if description != template['Queue']['NoSong']:
+		description += template['Queue']['Page'] % (
+			page,
+			math.ceil((len(queue_info) - 1) / 12) \
+				if math.ceil((len(queue_info) - 1) / 12) > 0 \
+				else 1
+		)
+
 	description += template['Queue']['Request'] % (
 		ctx.author.name + ctx.author.discriminator
 	)
@@ -97,4 +104,4 @@ def cycle_to_list(cycle, saved : List = []) -> List:
 	return saved
 
 def jump_to_position(queue : List, pos : int):
-	...
+	return queue[pos - 1:]

@@ -21,12 +21,12 @@
 	"Pause": ":pause_button: **Paused**",
 	"Leave": ":mailbox_with_no_mail: **Successfully disconnected**",
 	"Loop": {
-		"Enable": ":repeat_one: **Enable!**",
-		"Disable": ":repeat_one: **Disable!**"
+		"Enable": ":repeat_one: **Loop enable!**",
+		"Disable": ":repeat_one: **Loop disable!**"
 	},
 	"QueueLoop": {
-		"Enable": ":repeat_one: **Queue Enable!**",
-		"Disable": ":repeat_one: **Queue Disable!**"
+		"Enable": ":repeat_one: **Queue loop enable!**",
+		"Disable": ":repeat_one: **Queue loop disable!**"
 	},
 	"Skip": ":fast_forward: **Skipped** :thumbsup:",
 	"Choose": "**Type a number to make a choice. Type** `cancel` **to exit**",
