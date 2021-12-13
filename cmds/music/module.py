@@ -3,12 +3,18 @@ import math
 import orjson
 import asyncio
 import nextcord as nc
+from nextcord.opus import Encoder as OpusEncoder
 from nextcord.ext import commands
 from typing import (
 	List,
 	Dict,
-	Union
+	Union,
+	TypeVar,
+	Generic
 )
+
+AT = TypeVar('AT', bound='AudioSource')
+VC = TypeVar('VC', bound='VoiceController')
 
 with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 	template = orjson.loads(mt.read())
@@ -91,6 +97,9 @@ def queue_embed(ctx : commands.command, queue_info : List[Dict], page : int) -> 
 	)
 	return embed
 
+def nowplay_embed(ctx : commands.Context, now_info : Dict, time : int):
+	...
+
 def parse_obj(obj : Dict) -> str:
 	return 'https://youtu.be/' + obj['id']
 
@@ -105,3 +114,15 @@ def cycle_to_list(cycle, saved : List = []) -> List:
 
 def jump_to_position(queue : List, pos : int):
 	return queue[pos - 1:]
+
+class CustomSource(nc.FFmpegPCMAudio):
+	def __init__(self, vc : VC, source : Generic[AT], **kwargs):
+		super().__init__(source, **kwargs)
+		self.VC = vc
+
+	def read(self):
+		ret = self._stdout.read(OpusEncoder.FRAME_SIZE)
+		if len(ret) != OpusEncoder.FRAME_SIZE:
+			return b''
+		self.VC.time += 0.02
+		return ret

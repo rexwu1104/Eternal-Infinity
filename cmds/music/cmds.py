@@ -15,7 +15,8 @@ from .module import (
 	queue_embed,
 	parse_obj,
 	cycle_to_list,
-	jump_to_position
+	jump_to_position,
+	CustomSource as CS
 )
 
 urls = [
@@ -128,7 +129,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 		info = voice_controller.queue[0][0]
 		nowinfo = voice_controller.queue_info[0]
 		source = nc.PCMVolumeTransformer(
-			nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+			CS(voice_controller, info.voice_url, **OPTIONS),
 			voice_controller.volume
 		)
 		voice_controller.source = source
@@ -148,27 +149,28 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 				info = voice_controller.queue[0][0]
 				nowinfo = voice_controller.queue_info[0]
 				new_source = nc.PCMVolumeTransformer(
-					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+					CS(voice_controller, info.voice_url, **OPTIONS),
 					voice_controller.volume
 				)
 			elif voice_controller.queue_loop:
 				info = next(voice_controller.queue)[0]
 				nowinfo = next(voice_controller.queue_info)
 				new_source = nc.PCMVolumeTransformer(
-					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+					CS(voice_controller, info.voice_url, **OPTIONS),
 					voice_controller.volume
 				)
 			else:
 				voice_controller.queue.pop(0)
 				voice_controller.queue_info.pop(0)
 				if len(voice_controller.queue) == 0:
+					voice_controller.client.cleanup()
 					await voice_controller.client.disconnect()
 					await ctx.send(template['Leave'])
 					voice_controller.reset()
 				info = voice_controller.queue[0][0]
 				nowinfo = voice_controller.queue_info[0]
 				new_source = nc.PCMVolumeTransformer(
-					nc.FFmpegPCMAudio(info.voice_url, **OPTIONS),
+					CS(voice_controller, info.voice_url, **OPTIONS),
 					voice_controller.volume
 				)
 
@@ -288,3 +290,50 @@ async def _skip(self, ctx : commands.Context, pos : int):
 
 	await ctx.send(template['Skip'])
 	voice_controller.client.stop()
+
+async def _join(self, ctx : commands.Context):
+	voice_controller = self.guilds[ctx.guild.id]
+	if voice_controller.in_sequence and voice_controller.vchannel != ctx.author.voice.channel:
+		await ctx.send('**Excuse me, the music is not playing over.**\n**I cannot join your channel.**')
+		return
+
+	if voice_controller.client is None:
+		voice_controller.client = \
+			await ctx.author.voice.channel.connect()
+		voice_controller.vchannel = \
+			voice_controller.client.channel
+		voice_controller.tchannel = \
+			ctx.channel
+		await ctx.send(template['Join'] % (
+			voice_controller.vchannel.name,
+			voice_controller.tchannel.name
+		))
+	elif voice_controller.vchannel != ctx.author.voice.channel:
+		voice_controller.client = \
+			await ctx.author.voice.channel.connect()
+		voice_controller.vchannel = \
+			voice_controller.client.channel
+		await ctx.send(template['Join'] % (
+			voice_controller.vchannel.name,
+			voice_controller.tchannel.name
+		))
+
+async def _leave(self, ctx : commands.Context):
+	voice_controller = self.guilds[ctx.guild.id]
+	# if ctx.author not in voice_controller.DJ:
+	# 	await ctx.send('**You cannot let bot leave this channel.**\
+	# 	\n**You are not the DJ!!!**')
+
+	if voice_controller.client is None:
+		await ctx.send(template['NotInChannel']['In'])
+		return
+
+	voice_controller.client.stop()
+	voice_controller.client.cleanup()
+	await voice_controller.client.disconnect()
+	voice_controller.reset()
+	await ctx.send(template['Leave'])
+
+async def _nowplay(self, ctx : commands.Context):
+	progress = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+	voice_controller = self.guilds[ctx.guild.id]

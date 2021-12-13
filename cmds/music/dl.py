@@ -1,8 +1,7 @@
 from NPytdl import Pytdl
 from typing import (
 	List,
-	Dict,
-	Union
+	Dict
 )
 
 ysdl = Pytdl()

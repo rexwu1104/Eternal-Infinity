@@ -20,7 +20,9 @@ from .cmds import (
 	_queueloop,
 	_volume,
 	_queue,
-	_skip
+	_skip,
+	_join,
+	_leave
 )
 from pprint import pprint
 
@@ -47,6 +49,7 @@ class VoiceController:
 		self.tchannel : TextChannel = None
 		self.in_sequence : bool = False
 		self.DJ : List[Union[Member, User]] = []
+		self.time : float = 0.0
 
 	async def load(self):
 		if len(self.tmp_queue) == 0:
@@ -164,7 +167,7 @@ class Music(Cog):
 
 		await _queueloop(self, ctx)
 
-	@commands.command()
+	@commands.command(aliases=['vol'])
 	async def volume(self, ctx : commands.Context, vol : float):
 		await _volume(self, ctx, vol)
 
@@ -175,6 +178,27 @@ class Music(Cog):
 	@commands.command(aliases=['s'])
 	async def skip(self, ctx : commands.Context, pos : int = 1):
 		await _skip(self, ctx, pos)
+
+	@commands.command(aliases=['j'])
+	async def join(self, ctx : commands.Context):
+		if ctx.author.voice is None:
+			await ctx.send(template['NotInChannel']['Out'])
+			return
+
+		await _join(self, ctx)
+
+	@commands.command(aliases=['dc', 'disconnect'])
+	async def leave(self, ctx : commands.Context):
+		if ctx.author.voice is None:
+			await ctx.send(template['NotInChannel']['Out'])
+			return
+
+		await _leave(self, ctx)
+
+	@commands.command()
+	async def test(self, ctx : commands.Context):
+		voice_controller = self.guilds[ctx.guild.id]
+		await ctx.send(voice_controller.time)
 
 def setup(bot : commands.Bot):
 	bot.add_cog(Music(bot))
