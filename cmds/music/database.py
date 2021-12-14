@@ -5,7 +5,7 @@ class DB:
 
 	def __init__(self):
 		with open(self.file_name, 'r', encoding='utf8') as rjson:
-			self.tmp = orjson.loads(rjson.read())
+			self.tmp = {} or orjson.loads(rjson.read())
 
 	def get(self, key):
 		with open(self.file_name, 'r', encoding='utf8') as rjson:

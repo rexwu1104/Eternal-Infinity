@@ -4,4 +4,3 @@ uvicorn>=0.15.0
 npytdl>=4.0.5
 orjson>=3.6.5
 pynacl>=1.4.0
-tinydb>=4.5.2
