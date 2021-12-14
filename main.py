@@ -2,7 +2,7 @@ import os
 import nextcord as nc
 from nextcord.ext import commands
 
-def is_owner(ctx : commands.Context) -> bool:
+def is_owner(ctx: commands.Context) -> bool:
 	return ctx.author.id == 606472364271599621
 
 intents = nc.Intents.all()
@@ -40,19 +40,19 @@ async def on_ready():
 
 @bot.command()
 @commands.check(is_owner)
-async def load(ctx : commands.Context, file_name : str):
+async def load(ctx: commands.Context, file_name: str):
 	bot.load_extension(f'cmds.{file_name}')
 	await ctx.message.delete()
 
 @bot.command()
 @commands.check(is_owner)
-async def unload(ctx : commands.Context, file_name : str):
+async def unload(ctx: commands.Context, file_name: str):
 	bot.unload_extension(f'cmds.{file_name}')
 	await ctx.message.delete()
 
 @bot.command()
 @commands.check(is_owner)
-async def reload(ctx : commands.Context, file_name : str):
+async def reload(ctx: commands.Context, file_name: str):
 	bot.reload_extension(f'cmds.{file_name}')
 	await ctx.message.delete()
 

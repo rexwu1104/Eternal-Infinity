@@ -16,8 +16,10 @@ from .module import (
 	parse_obj,
 	cycle_to_list,
 	jump_to_position,
-	CustomSource as CS
+	TimeLogPCMAudio as TLPCMA,
+	nowplay_embed
 )
+from .database import DB
 
 urls = [
 	re.compile(r'(?:https?://)?open\.spotify\.com/(album|playlist)/([\w\-]+)(?:[?&].+)*'),
@@ -29,10 +31,11 @@ OPTIONS = {
 	'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'
 }
 
+db = DB()
 with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 	template = orjson.loads(mt.read())
 
-async def _play(self, ctx : commands.Context, *, q : str, t : str):
+async def _play(self, ctx: commands.Context, *, q: str, t: str):
 	voice_controller = self.guilds[ctx.guild.id]
 	if voice_controller.in_sequence and voice_controller.vchannel != ctx.author.voice.channel:
 		await ctx.send('**Excuse me, the music is not playing over.**\n**I cannot join your channel.**')
@@ -129,7 +132,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 		info = voice_controller.queue[0][0]
 		nowinfo = voice_controller.queue_info[0]
 		source = nc.PCMVolumeTransformer(
-			CS(voice_controller, info.voice_url, **OPTIONS),
+			TLPCMA(voice_controller, info.voice_url, **OPTIONS),
 			voice_controller.volume
 		)
 		voice_controller.source = source
@@ -140,7 +143,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 		def handle_error(async_func, loop, error):
 			asyncio.run_coroutine_threadsafe(async_func(error), loop)
 
-		async def play_next(err : Exception):
+		async def play_next(err: Exception):
 			if err is not None:
 				print(err)
 				
@@ -149,14 +152,14 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 				info = voice_controller.queue[0][0]
 				nowinfo = voice_controller.queue_info[0]
 				new_source = nc.PCMVolumeTransformer(
-					CS(voice_controller, info.voice_url, **OPTIONS),
+					TLPCMA(voice_controller, info.voice_url, **OPTIONS),
 					voice_controller.volume
 				)
 			elif voice_controller.queue_loop:
 				info = next(voice_controller.queue)[0]
 				nowinfo = next(voice_controller.queue_info)
 				new_source = nc.PCMVolumeTransformer(
-					CS(voice_controller, info.voice_url, **OPTIONS),
+					TLPCMA(voice_controller, info.voice_url, **OPTIONS),
 					voice_controller.volume
 				)
 			else:
@@ -170,7 +173,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 				info = voice_controller.queue[0][0]
 				nowinfo = voice_controller.queue_info[0]
 				new_source = nc.PCMVolumeTransformer(
-					CS(voice_controller, info.voice_url, **OPTIONS),
+					TLPCMA(voice_controller, info.voice_url, **OPTIONS),
 					voice_controller.volume
 				)
 
@@ -189,7 +192,7 @@ async def _play(self, ctx : commands.Context, *, q : str, t : str):
 		info = voice_controller.queue[-1][0]
 		await ctx.send(template['Add'] % (info.title))
 
-async def _loop(self, ctx : commands.Context):
+async def _loop(self, ctx: commands.Context):
 	voice_controller = self.guilds[ctx.guild.id]
 	if voice_controller.client is not None and voice_controller.vchannel != ctx.author.voice.channel:
 		await ctx.send(template['NotInChannel']['In'])
@@ -211,7 +214,7 @@ async def _loop(self, ctx : commands.Context):
 		voice_controller.song_loop = True
 		await ctx.send(template['Loop']['Enable'])
 
-async def _queueloop(self, ctx : commands.Context):
+async def _queueloop(self, ctx: commands.Context):
 	voice_controller = self.guilds[ctx.guild.id]
 	if voice_controller.client is not None and voice_controller.vchannel != ctx.author.voice.channel:
 		await ctx.send(template['NotInChannel']['In'])
@@ -237,7 +240,7 @@ async def _queueloop(self, ctx : commands.Context):
 		voice_controller.queue_info = cycle(voice_controller.queue_info)
 		await ctx.send(template['QueueLoop']['Enable'])
 
-async def _volume(self, ctx : commands.Context, vol : float):
+async def _volume(self, ctx: commands.Context, vol: float):
 	voice_controller = self.guilds[ctx.guild.id]
 	voice_controller.volume = vol
 	if voice_controller.source is not None:
@@ -245,7 +248,7 @@ async def _volume(self, ctx : commands.Context, vol : float):
 
 	await ctx.send('**Volume is change to** `{}%`'.format(vol*100))
 
-async def _queue(self, ctx : commands.Context, page : int):
+async def _queue(self, ctx: commands.Context, page: int):
 	voice_controller = self.guilds[ctx.guild.id]
 	queue_info = voice_controller.queue_info \
 		if type(voice_controller.queue_info) != cycle \
@@ -259,7 +262,7 @@ async def _queue(self, ctx : commands.Context, page : int):
 		)
 	)
 
-async def _skip(self, ctx : commands.Context, pos : int):
+async def _skip(self, ctx: commands.Context, pos: int):
 	voice_controller = self.guilds[ctx.guild.id]
 	if voice_controller.queue_loop:
 		await ctx.send('**In queue-loop mode cannot use skip!!!**')
@@ -273,11 +276,14 @@ async def _skip(self, ctx : commands.Context, pos : int):
 		await ctx.send('**index out of range!!!**')
 		return
 
-	if (len(queue_info) != 1 or len(queue) != 1) and pos == 1:
+	if (len(queue_info) == 1 and len(queue) == 1) and pos == 1:
 		await ctx.send(template['Skip'])
 		client = voice_controller.client
 		voice_controller.reset()
 		client.stop()
+		client.cleanup()
+		await client.disconnect()
+		await ctx.send(template['Leave'])
 		return
 
 	queue_info = jump_to_position(queue_info, pos)
@@ -291,7 +297,7 @@ async def _skip(self, ctx : commands.Context, pos : int):
 	await ctx.send(template['Skip'])
 	voice_controller.client.stop()
 
-async def _join(self, ctx : commands.Context):
+async def _join(self, ctx: commands.Context):
 	voice_controller = self.guilds[ctx.guild.id]
 	if voice_controller.in_sequence and voice_controller.vchannel != ctx.author.voice.channel:
 		await ctx.send('**Excuse me, the music is not playing over.**\n**I cannot join your channel.**')
@@ -318,7 +324,7 @@ async def _join(self, ctx : commands.Context):
 			voice_controller.tchannel.name
 		))
 
-async def _leave(self, ctx : commands.Context):
+async def _leave(self, ctx: commands.Context):
 	voice_controller = self.guilds[ctx.guild.id]
 	# if ctx.author not in voice_controller.DJ:
 	# 	await ctx.send('**You cannot let bot leave this channel.**\
@@ -334,6 +340,28 @@ async def _leave(self, ctx : commands.Context):
 	voice_controller.reset()
 	await ctx.send(template['Leave'])
 
-async def _nowplay(self, ctx : commands.Context):
-	progress = "▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"
+async def _nowplay(self, ctx: commands.Context):
 	voice_controller = self.guilds[ctx.guild.id]
+	if len(voice_controller.queue_info) == 0:
+		await ctx.send('**There is not any song in queue!!!**')
+		return
+		
+	embed = nowplay_embed(
+		ctx,
+		voice_controller.now_info,
+		int(voice_controller.time)
+	)
+
+	await ctx.send(embed=embed)
+
+async def _stop(self, ctx: commands.Context):
+	voice_controller = self.guilds[ctx.guild.id]
+	if voice_controller.client is None:
+		await ctx.send(template['NotInChannel']['In'])
+		return 
+
+	voice_controller.client.pause()
+	await ctx.send(template['Pause'])
+
+def _create_dj(self, ctx: commands.Context):
+	...

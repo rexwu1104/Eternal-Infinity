@@ -22,11 +22,13 @@ from .cmds import (
 	_queue,
 	_skip,
 	_join,
-	_leave
+	_leave,
+	_nowplay,
+	_stop
 )
 from pprint import pprint
 
-def is_owner(ctx : commands.Context) -> bool:
+def is_owner(ctx: commands.Context) -> bool:
 	return ctx.author.id == 606472364271599621
 
 ysdl = NPytdl.Pytdl()
@@ -36,20 +38,20 @@ with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 class VoiceController:
 	def __init__(self):
 		self.volume = 1.0
-		self.queue_loop : bool = False
-		self.song_loop : bool = False
-		self.queue : List[[NPytdl.YoutubeVideo, Union[Member, User]]] = []
-		self.queue_info : List[Dict] = []
-		self.tmp_queue : List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
-		self.nowplay : NPytdl.YoutubeVideo = None
-		self.now_info : Dict = {}
-		self.source : PCMVolumeTransformer = None
-		self.client : VoiceClient = None
-		self.vchannel : VoiceChannel = None
-		self.tchannel : TextChannel = None
-		self.in_sequence : bool = False
-		self.DJ : List[Union[Member, User]] = []
-		self.time : float = 0.0
+		self.queue_loop: bool = False
+		self.song_loop: bool = False
+		self.queue: List[[NPytdl.YoutubeVideo, Union[Member, User]]] = []
+		self.queue_info: List[Dict] = []
+		self.tmp_queue: List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
+		self.nowplay: NPytdl.YoutubeVideo = None
+		self.now_info: Dict = {}
+		self.source: PCMVolumeTransformer = None
+		self.client: VoiceClient = None
+		self.vchannel: VoiceChannel = None
+		self.tchannel: TextChannel = None
+		self.in_sequence: bool = False
+		self.DJ: List[Union[Member, User]] = []
+		self.time: float = 0.0
 
 	async def load(self):
 		if len(self.tmp_queue) == 0:
@@ -96,63 +98,66 @@ class VoiceController:
 			self.tmp_queue = [[i, item[1]] for i in info.musicList] + self.tmp_queue
 
 	def reset(self):
-		self.queue_loop : bool = False
-		self.song_loop : bool = False
-		self.queue : List[[NPytdl.YoutubeVideo, Union[Member, User]]] = []
-		self.queue_info : List[Dict] = []
-		self.tmp_queue : List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
-		self.nowplay : NPytdl.YoutubeVideo = None
-		self.source : PCMVolumeTransformer = None
-		self.client : VoiceClient = None
-		self.vchannel : VoiceChannel = None
-		self.tchannel : TextChannel = None
-		self.in_sequence : bool = False
+		self.volume = 1.0
+		self.queue_loop: bool = False
+		self.song_loop: bool = False
+		self.queue: List[[NPytdl.YoutubeVideo, Union[Member, User]]] = []
+		self.queue_info: List[Dict] = []
+		self.tmp_queue: List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
+		self.nowplay: NPytdl.YoutubeVideo = None
+		self.now_info: Dict = {}
+		self.source: PCMVolumeTransformer = None
+		self.client: VoiceClient = None
+		self.vchannel: VoiceChannel = None
+		self.tchannel: TextChannel = None
+		self.in_sequence: bool = False
+		self.time: float = 0.0
 
 class Music(Cog):
 
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
-		self.guilds : Dict[int, VoiceController] = {}
+		self.guilds: Dict[int, VoiceController] = {}
 		for guild in self.bot.guilds:
 			self.guilds[guild.id] = VoiceController()
 
 	@commands.command(aliases=['p'])
-	async def play(self, ctx : commands.Context, *, q : str = ''):
+	async def play(self, ctx: commands.Context, *, query: str = ''):
 		voice_controller = self.guilds[ctx.guild.id]
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
 			
-		if q == '' and not voice_controller.in_sequence:
+		if query == '' and not voice_controller.in_sequence:
 			await ctx.send(':x: **query cannot be empty!!!**')
 			return
-		elif q == '':
+		elif query == '':
 			voice_controller.client.resume()
 			return
 
-		await _play(self, ctx, q=q, t='play')
+		await _play(self, ctx, q=query, t='play')
 
 	@commands.command()
-	async def search(self, ctx : commands.Context, *, q : str = ''):
+	async def search(self, ctx: commands.Context, *, query: str = ''):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
 
-		if q == '':
+		if query == '':
 			await ctx.send(':x: **query cannot be empty!!!**')
 			return
 
-		await _play(self, ctx, q=q, t='search')
+		await _play(self, ctx, q=query, t='search')
 
 	@commands.command()
 	@commands.check(is_owner)
-	async def cc(self, ctx : commands.Context):
+	async def cc(self, ctx: commands.Context):
 		voice_controller = self.guilds[ctx.guild.id]
 		pprint(voice_controller.__dict__, indent=1)
 
 	@commands.command()
-	async def loop(self, ctx : commands.Context):
+	async def loop(self, ctx: commands.Context):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
@@ -160,7 +165,7 @@ class Music(Cog):
 		await _loop(self, ctx)
 	
 	@commands.command()
-	async def queueloop(self, ctx : commands.Context):
+	async def queueloop(self, ctx: commands.Context):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
@@ -168,19 +173,19 @@ class Music(Cog):
 		await _queueloop(self, ctx)
 
 	@commands.command(aliases=['vol'])
-	async def volume(self, ctx : commands.Context, vol : float):
+	async def volume(self, ctx: commands.Context, vol: float):
 		await _volume(self, ctx, vol)
 
 	@commands.command(aliases=['q'])
-	async def queue(self, ctx : commands.Context, page : int = 1):
+	async def queue(self, ctx: commands.Context, page: int = 1):
 		await _queue(self, ctx, page)
 
 	@commands.command(aliases=['s'])
-	async def skip(self, ctx : commands.Context, pos : int = 1):
+	async def skip(self, ctx: commands.Context, pos: int = 1):
 		await _skip(self, ctx, pos)
 
 	@commands.command(aliases=['j'])
-	async def join(self, ctx : commands.Context):
+	async def join(self, ctx: commands.Context):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
@@ -188,17 +193,24 @@ class Music(Cog):
 		await _join(self, ctx)
 
 	@commands.command(aliases=['dc', 'disconnect'])
-	async def leave(self, ctx : commands.Context):
+	async def leave(self, ctx: commands.Context):
 		if ctx.author.voice is None:
 			await ctx.send(template['NotInChannel']['Out'])
 			return
 
 		await _leave(self, ctx)
 
-	@commands.command()
-	async def test(self, ctx : commands.Context):
-		voice_controller = self.guilds[ctx.guild.id]
-		await ctx.send(voice_controller.time)
+	@commands.command(aliases=['np'])
+	async def nowplay(self, ctx: commands.Context):
+		await _nowplay(self, ctx)
 
-def setup(bot : commands.Bot):
+	@commands.command(aliases=['pause'])
+	async def stop(self, ctx: commands.Context):
+		if ctx.author.voice is None:
+			await ctx.send(template['NotInChannel']['Out'])
+			return
+
+		await _stop(self, ctx)
+
+def setup(bot: commands.Bot):
 	bot.add_cog(Music(bot))
