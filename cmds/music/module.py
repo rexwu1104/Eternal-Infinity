@@ -22,21 +22,6 @@ with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 def parse_obj(obj: Dict) -> str:
 	return 'https://youtu.be/' + obj['id']
 
-async def get_number(bot: commands.Bot, ctx: commands.Context) -> Union[int, str]:
-	def check(m: nc.Message):
-		return m.content.isdigit() or m.content == 'cancel'
-
-	sr: nc.Message = await ctx.send(template['Choose'])
-
-	try:
-		m: nc.Message = await bot.wait_for('message', check=check, timeout=60.0)
-		await sr.delete()
-	except asyncio.TimeoutError:
-		await ctx.send('**timeout!!!**')
-		return None
-
-	return int(m.content) if m.content.isdigit() else m.content
-
 def _second_to_duration(time: int):
 	h: int = time // 3600
 	m: int = (time - h * 3600) // 60
@@ -68,17 +53,34 @@ def _duration_to_second(d: str):
 
 	return s
 
-def search_embed(youtube_list: List[Dict]) -> nc.Embed:
-	description: str = ''
-	for item in youtube_list:
-		title: str = item['title']
-		description += f'{youtube_list.index(item)+1}. [{title}](https://youtu.be/{item["id"]})\n\n'
+class search_select(nc.ui.Select):
+	def __init__(self, youtube_list: List[Dict]):
+		self._options = youtube_list
+		options = [
+			nc.SelectOption(
+				label=value['title'],
+				description=f'https://youtu.be/{value["id"]}',
+				value=youtube_list.index(value)
+			) for value in youtube_list
+		]
 
-	embed = nc.Embed(
-		color=nc.Colour.random(),
-		description=description
-	)
-	return embed
+		super().__init__(
+			placeholder='Choose one...',
+			min_values=1,
+			max_values=1,
+			options=options
+		)
+
+	async def callback(self, interaction: nc.Interaction):
+		await interaction.message.delete()
+		await asyncio.sleep(2)
+		self.view.stop()
+
+class search_view(nc.ui.View):
+	def __init__(self, *args):
+		super().__init__()
+
+		self.add_item(search_select(*args))
 
 def queue_embed(ctx: commands.command, queue_info: List[Dict], page: int) -> nc.Embed:
 	description: str = ''
@@ -158,6 +160,7 @@ def nowplay_embed(ctx: commands.Context, now_info: Dict, time: int):
 		description=description,
 		title='Now playing'
 	)
+	embed.set_thumbnail(now_info['thumbnail'][-1])
 	return embed
 
 def cycle_to_list(cycle, saved: List = []) -> List:

@@ -10,8 +10,7 @@ from .dl import (
 	get_youtube_list
 )
 from .module import (
-	get_number,
-	search_embed,
+	search_view,
 	queue_embed,
 	parse_obj,
 	cycle_to_list,
@@ -98,35 +97,24 @@ async def _play(self, ctx: commands.Context, *, q: str, t: str):
 		voice_controller.queue_info.append(data_info)
 	elif t == 'search':
 		youtube_list = await get_youtube_list(q)
-		embed = search_embed(youtube_list)
-		embed.set_author(
-			name=ctx.author.name,
-			icon_url=ctx.author.avatar.url
-		)
+		view = search_view(youtube_list)
 
-		e = await ctx.send(embed=embed)
-		index = await get_number(self.bot, ctx)
+		await ctx.send('take a choice~~', view=view)
+		if not await view.wait():
+			select = view.children[0]
+			index = int(select.values[0])
+			view.stop()
 
-		if index is None or index == 'cancel':
-			await e.delete()
-			return
-
-		if index < 1 or index > len(youtube_list):
-			await e.delete()
-			await ctx.send('**index out of range!!!**')
-			return
-		
-		await e.delete()
 		voice_controller.tmp_queue.append(
 			[
 				parse_obj(
-					youtube_list[index-1]
+					youtube_list[index]
 				),
 				ctx.author
 			]
 		)
 		await voice_controller.load()
-		voice_controller.queue_info += youtube_list[index-1]
+		voice_controller.queue_info.append(youtube_list[index])
 
 	if not voice_controller.in_sequence:
 		info = voice_controller.queue[0][0]
