@@ -53,7 +53,7 @@ def _duration_to_second(d: str):
 
 	return s
 
-class search_select(nc.ui.Select):
+class SearchSelect(nc.ui.Select):
 	def __init__(self, youtube_list: List[Dict]):
 		self._options = youtube_list
 		options = [
@@ -72,15 +72,58 @@ class search_select(nc.ui.Select):
 		)
 
 	async def callback(self, interaction: nc.Interaction):
-		await interaction.message.delete()
-		await asyncio.sleep(2)
+		interaction.response._responded = True
 		self.view.stop()
 
-class search_view(nc.ui.View):
+class SearchView(nc.ui.View):
 	def __init__(self, *args):
 		super().__init__()
 
-		self.add_item(search_select(*args))
+		self.add_item(SearchSelect(*args))
+
+	async def interaction_check(self, interaction: nc.Interaction):
+		await interaction.message.delete()
+		return True
+
+class MusicControlBoard(nc.ui.View):
+	@nc.ui.button(style=nc.ButtonStyle.blurple, label='|---Loop---|', row=0)
+	async def loop_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.green, label='|Volume Up|', row=0)
+	async def volume_up_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.blurple, label='|Queue Loop|', row=0)
+	async def queue_loop_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.green, label='|-Previous-|', row=1)
+	async def prev_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.green, label='|--Pause--|', row=1)
+	async def resume_and_pause_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.green, label='|--Next--|', row=1)
+	async def next_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.blurple, label='|--Queue--|', row=2)
+	async def queue_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.green, label='|Volume Down|', row=2)
+	async def volume_down_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	@nc.ui.button(style=nc.ButtonStyle.blurple, label='|--Info--|', row=2)
+	async def info_button(self, button: nc.ui.Button, interaction: nc.Interaction):
+		...
+
+	def __init__(self, **funcs):
+		super().__init__(timeout=None)
 
 def queue_embed(ctx: commands.command, queue_info: List[Dict], page: int) -> nc.Embed:
 	description: str = ''
@@ -164,7 +207,7 @@ def nowplay_embed(ctx: commands.Context, now_info: Dict, time: int):
 	return embed
 
 def cycle_to_list(cycle, saved: List = []) -> List:
-	while e:= next(cycle):
+	while e := next(cycle):
 		if e in saved:
 			break
 

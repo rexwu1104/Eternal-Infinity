@@ -24,8 +24,10 @@ from .cmds import (
 	_join,
 	_leave,
 	_nowplay,
-	_stop
+	_stop,
+	_create_dj
 )
+from .database import DB
 from pprint import pprint
 
 def is_owner(ctx: commands.Context) -> bool:
@@ -211,6 +213,10 @@ class Music(Cog):
 			return
 
 		await _stop(self, ctx)
+
+	@commands.command()
+	async def createDJ(self, ctx: commands.Context):
+		await _create_dj(self, ctx)
 
 def setup(bot: commands.Bot):
 	bot.add_cog(Music(bot))

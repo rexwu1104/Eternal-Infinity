@@ -1,6 +1,6 @@
-nextcord>=2.0.0a3
+nextcord[speed]>=2.0.0a3
 fastapi>=0.70.0
 uvicorn>=0.15.0
-npytdl>=4.0.5
+npytdl>=4.0.6
 orjson>=3.6.5
 pynacl>=1.4.0

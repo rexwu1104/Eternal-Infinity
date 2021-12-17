@@ -10,7 +10,8 @@ from .dl import (
 	get_youtube_list
 )
 from .module import (
-	search_view,
+	SearchView,
+	MusicControlBoard,
 	queue_embed,
 	parse_obj,
 	cycle_to_list,
@@ -97,13 +98,12 @@ async def _play(self, ctx: commands.Context, *, q: str, t: str):
 		voice_controller.queue_info.append(data_info)
 	elif t == 'search':
 		youtube_list = await get_youtube_list(q)
-		view = search_view(youtube_list)
+		view = SearchView(youtube_list)
 
 		await ctx.send('take a choice~~', view=view)
 		if not await view.wait():
 			select = view.children[0]
 			index = int(select.values[0])
-			view.stop()
 
 		voice_controller.tmp_queue.append(
 			[
@@ -174,7 +174,10 @@ async def _play(self, ctx: commands.Context, *, q: str, t: str):
 				await ctx.send(template['Play'] % (info.title))
 
 		voice_controller.client.play(source, after=partial(handle_error, play_next, loop))
-		await ctx.send(template['Play'] % (info.title))
+		view = MusicControlBoard(**{
+			'vc': voice_controller
+		})
+		await ctx.send(template['Play'] % (info.title), view=view)
 		voice_controller.in_sequence = True
 	else:
 		info = voice_controller.queue[-1][0]
@@ -314,9 +317,9 @@ async def _join(self, ctx: commands.Context):
 
 async def _leave(self, ctx: commands.Context):
 	voice_controller = self.guilds[ctx.guild.id]
-	# if ctx.author not in voice_controller.DJ:
-	# 	await ctx.send('**You cannot let bot leave this channel.**\
-	# 	\n**You are not the DJ!!!**')
+	if ctx.author not in voice_controller.DJ:
+		await ctx.send('**You cannot let bot leave this channel.**\
+		\n**You are not the DJ!!!**')
 
 	if voice_controller.client is None:
 		await ctx.send(template['NotInChannel']['In'])
@@ -351,5 +354,13 @@ async def _stop(self, ctx: commands.Context):
 	voice_controller.client.pause()
 	await ctx.send(template['Pause'])
 
-def _create_dj(self, ctx: commands.Context):
-	...
+async def _create_dj(self, ctx: commands.Context):
+	if db.get(str(ctx.guild.id)) is None:
+		role = await ctx.guild.create_role(
+			name='DJ',
+			mentionable=False
+		)
+
+		db.set(str(ctx.guild.id), role.id)
+	else:
+		await ctx.send('**DJ is already exist!!!**')

@@ -16,7 +16,7 @@ class DB:
 	def set(self, key, val):
 		with open(self.file_name, 'w', encoding='utf8') as wjson:
 			self.tmp[key] = val
-			wjson.write(orjson.dumps(self.tmp))
+			wjson.write(orjson.dumps(self.tmp).decode())
 
 	def keys(self):
 		return self.tmp.keys()
@@ -24,4 +24,4 @@ class DB:
 	def delete(self, key):
 		with open(self.file_name, 'w', encoding='utf8') as wjson:
 			del self.tmp[key]
-			wjson.write(orjson.dumps(self.tmp))
+			wjson.write(orjson.dumps(self.tmp).decode())
