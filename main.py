@@ -9,7 +9,7 @@ intents = nc.Intents.all()
 bot = commands.Bot(
 	command_prefix = 'ei!',
 	intents = intents
-)
+) 
 # bot.remove_command('help')
 
 @bot.event
