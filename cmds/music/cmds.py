@@ -15,7 +15,6 @@ from .module import (
 	queue_embed,
 	parse_obj,
 	cycle_to_list,
-	jump_to_position,
 	TimeLogPCMAudio as TLPCMA,
 	nowplay_embed
 )
@@ -132,10 +131,13 @@ async def _play(self, ctx: commands.Context, *, q: str, t: str):
 			asyncio.run_coroutine_threadsafe(async_func(error), loop)
 
 		async def play_next(err: Exception):
-			if err is not None:
-				print(err)
+			print(err)
+			# if err is not None:
+			# 	print(err)
 				
-			await voice_controller.load()
+			if not voice_controller.skiped:
+				await voice_controller.load()
+			voice_controller.skiped = False
 			if voice_controller.song_loop:
 				info = voice_controller.queue[0][0]
 				nowinfo = voice_controller.queue_info[0]
@@ -151,15 +153,18 @@ async def _play(self, ctx: commands.Context, *, q: str, t: str):
 					voice_controller.volume
 				)
 			else:
-				voice_controller.queue.pop(0)
-				voice_controller.queue_info.pop(0)
-				if len(voice_controller.queue) == 0:
+				voice_controller.now_pos += 1
+				pos = voice_controller.now_pos
+				if len(
+					voice_controller.queue + 
+					voice_controller.tmp_queue
+				) == pos:
 					voice_controller.client.cleanup()
 					await voice_controller.client.disconnect()
 					await ctx.send(template['Leave'])
 					voice_controller.reset()
-				info = voice_controller.queue[0][0]
-				nowinfo = voice_controller.queue_info[0]
+				info = voice_controller.queue[pos][0]
+				nowinfo = voice_controller.queue_info[pos]
 				new_source = nc.PCMVolumeTransformer(
 					TLPCMA(voice_controller, info.voice_url, **OPTIONS),
 					voice_controller.volume
@@ -174,11 +179,22 @@ async def _play(self, ctx: commands.Context, *, q: str, t: str):
 				await ctx.send(template['Play'] % (info.title))
 
 		voice_controller.client.play(source, after=partial(handle_error, play_next, loop))
-		view = MusicControlBoard(**{
-			'vc': voice_controller
-		})
+		view = MusicControlBoard(voice_controller, **dict([
+			['resume', voice_controller.client.resume],
+			['pause', voice_controller.client.pause],
+			['loop', (_loop, self, ctx)],
+			['queue_loop', (_queueloop, self, ctx)],
+			['volume', (_volume, self, ctx)],
+			['next', (_skip, self, ctx)],
+			['prev', (_prev, self, ctx)],
+			['queue', (_queue, self, ctx)],
+			['info', (_nowplay, self, ctx)]
+		]))
+		
 		await ctx.send(template['Play'] % (info.title), view=view)
 		voice_controller.in_sequence = True
+		voice_controller.now_pos = 0
+		voice_controller.ctx = ctx
 	else:
 		info = voice_controller.queue[-1][0]
 		await ctx.send(template['Add'] % (info.title))
@@ -263,11 +279,12 @@ async def _skip(self, ctx: commands.Context, pos: int):
 	queue = voice_controller.queue + \
 		voice_controller.tmp_queue
 
-	if (len(queue_info) - 1 < pos or len(queue) - 1 < pos) and pos != 1:
+	if (len(queue_info) - 1 < pos or len(queue) - 1 < pos):
 		await ctx.send('**index out of range!!!**')
 		return
 
-	if (len(queue_info) == 1 and len(queue) == 1) and pos == 1:
+	if (len(queue_info) == pos and len(queue) == pos):
+		print(pos)
 		await ctx.send(template['Skip'])
 		client = voice_controller.client
 		voice_controller.reset()
@@ -277,16 +294,15 @@ async def _skip(self, ctx: commands.Context, pos: int):
 		await ctx.send(template['Leave'])
 		return
 
-	queue_info = jump_to_position(queue_info, pos)
-	queue = jump_to_position(queue, pos)
-
-	voice_controller.queue_info = queue_info
-	voice_controller.queue = []
-	voice_controller.tmp_queue = queue
-	await voice_controller.load()
+	voice_controller.now_pos = pos - 1
+	await voice_controller.load(pos - 1)
+	voice_controller.skiped = True
 
 	await ctx.send(template['Skip'])
 	voice_controller.client.stop()
+
+async def _prev(self, ctx):
+	...
 
 async def _join(self, ctx: commands.Context):
 	voice_controller = self.guilds[ctx.guild.id]

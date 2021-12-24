@@ -1,7 +1,7 @@
 import orjson
 
 class DB:
-	file_name = './cmds/music/music.json'
+	file_name = './cmds/music/dj.json'
 
 	def __init__(self):
 		with open(self.file_name, 'r', encoding='utf8') as rjson:

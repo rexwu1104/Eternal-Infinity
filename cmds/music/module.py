@@ -122,7 +122,7 @@ class MusicControlBoard(nc.ui.View):
 	async def info_button(self, button: nc.ui.Button, interaction: nc.Interaction):
 		...
 
-	def __init__(self, **funcs):
+	def __init__(self, vc, **funcs):
 		super().__init__(timeout=None)
 
 def queue_embed(ctx: commands.command, queue_info: List[Dict], page: int) -> nc.Embed:
@@ -214,9 +214,6 @@ def cycle_to_list(cycle, saved: List = []) -> List:
 		saved.append(e)
 
 	return saved
-
-def jump_to_position(queue: List, pos: int):
-	return queue[pos - 1:]
 
 class TimeLogPCMAudio(nc.FFmpegPCMAudio):
 	def __init__(self, vc: VC, source: Generic[AT], **kwargs):

@@ -12,7 +12,8 @@ from nextcord import (
 from typing import (
 	List,
 	Dict,
-	Union
+	Union,
+	Any
 )
 from .cmds import (
 	_play,
@@ -34,11 +35,23 @@ def is_owner(ctx: commands.Context) -> bool:
 	return ctx.author.id == 606472364271599621
 
 ysdl = NPytdl.Pytdl()
+db = DB()
 with open('./cmds/music/music_template.json', 'r', encoding='utf8') as mt:
 	template = orjson.loads(mt.read())
 
+class Empty(object):
+	def __repr__(self):
+		return 'None'
+
+def clean(arr: List[Any]):
+	eles: List[int] = []
+	for i in range(len(arr)):
+		eles.append(i)
+
 class VoiceController:
 	def __init__(self):
+		self.ctx : commands.Context = None
+		self.skiped = False
 		self.volume = 1.0
 		self.queue_loop: bool = False
 		self.song_loop: bool = False
@@ -47,6 +60,7 @@ class VoiceController:
 		self.tmp_queue: List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
 		self.nowplay: NPytdl.YoutubeVideo = None
 		self.now_info: Dict = {}
+		self.now_pos : int = None
 		self.source: PCMVolumeTransformer = None
 		self.client: VoiceClient = None
 		self.vchannel: VoiceChannel = None
@@ -55,11 +69,25 @@ class VoiceController:
 		self.DJ: List[Union[Member, User]] = []
 		self.time: float = 0.0
 
-	async def load(self):
+	async def load(self, pos: int = 0):
 		if len(self.tmp_queue) == 0:
 			return
 
-		item = self.tmp_queue.pop(0)
+		tmp_length = len(self.tmp_queue)
+		queue_length = len(self.queue)
+		print(pos, queue_length)
+		if pos < queue_length:
+			return
+
+		real_pos = pos - queue_length
+		print(real_pos, tmp_length)
+		if real_pos > tmp_length:
+			return
+
+		self.queue += [Empty()] * real_pos
+		
+		item = self.tmp_queue[real_pos]
+		self.tmp_queue[real_pos] = Empty()
 		if type(item[0]) == str:
 			info = await ysdl.info(item[0])
 		else:
@@ -100,6 +128,7 @@ class VoiceController:
 			self.tmp_queue = [[i, item[1]] for i in info.musicList] + self.tmp_queue
 
 	def reset(self):
+		self.ctx : commands.Context = None
 		self.volume = 1.0
 		self.queue_loop: bool = False
 		self.song_loop: bool = False
@@ -108,6 +137,7 @@ class VoiceController:
 		self.tmp_queue: List[[Union[str, NPytdl.YoutubeVideo], Union[Member, User]]] = []
 		self.nowplay: NPytdl.YoutubeVideo = None
 		self.now_info: Dict = {}
+		self.now_pos : int = None
 		self.source: PCMVolumeTransformer = None
 		self.client: VoiceClient = None
 		self.vchannel: VoiceChannel = None
@@ -123,6 +153,8 @@ class Music(Cog):
 		self.guilds: Dict[int, VoiceController] = {}
 		for guild in self.bot.guilds:
 			self.guilds[guild.id] = VoiceController()
+			# for member in guild.members:
+			# 	if member.roles
 
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, query: str = ''):
@@ -184,7 +216,8 @@ class Music(Cog):
 
 	@commands.command(aliases=['s'])
 	async def skip(self, ctx: commands.Context, pos: int = 1):
-		await _skip(self, ctx, pos)
+		voice_controller = self.guilds[ctx.guild.id]
+		await _skip(self, ctx, pos + len(voice_controller.queue))
 
 	@commands.command(aliases=['j'])
 	async def join(self, ctx: commands.Context):
