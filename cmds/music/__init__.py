@@ -15,6 +15,7 @@ from typing import (
 	Union,
 	Any
 )
+from .views import ControlBoard
 
 OPTIONS = {
 	'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'
@@ -22,6 +23,10 @@ OPTIONS = {
 
 def is_owner(ctx: commands.Context) -> bool:
 	return ctx.author.id == 606472364271599621
+
+class Empty:
+	def __repr__(self):
+		return '(nothing)'
 
 class VoiceController:
 	def __init__(self):
@@ -51,11 +56,39 @@ class VoiceController:
 			]
 		)
 
+	async def search(self, q: str, ctx: commands.Context):
+		ydl = NPytdl.Pytdl()
+		obj = await ydl.resultList(q)[0]
+		url = self.parse_obj(obj)
+
+		self.now_info = obj
+		self.tmp_queue.append([
+			url, ctx.author
+		])
+
+	def replace(self, pos: int):
+		data = self.tmp_queue.get(pos, Empty())
+		self.tmp_queue[pos] = Empty()
+		return data
+
+	def lengthen(self, size: int):
+		self.queue += [Empty()] * size
+
+	async def load(self, pos: int):
+		data = self.replace(pos)
+
+		if type(data) == Empty:
+			return
+
+		...
+
 	async def play(self):
 		...
 
 class Music(Cog):
-	...
+	@commands.command()
+	async def test(self, ctx: commands.Context):
+		await ctx.send('test', view=ControlBoard())
 
 def setup(bot: commands.Bot):
 	bot.add_cog(Music(bot))

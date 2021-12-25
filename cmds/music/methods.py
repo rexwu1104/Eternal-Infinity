@@ -12,3 +12,13 @@ async def play_(self, ctx: commands.Context, q: str, t: str):
 		url, spotify track url, spotify playlist url or spotify
 		album url
 		"""
+		controller.tmp_queue.append([
+			q, ctx.author
+		])
+		await controller.load(0)
+	else:
+		await controller.search(q)
+		await controller.load(0)
+
+	controller.play()
+	await ctx.send(embed=info_embed(controller), view=ControlBoard())

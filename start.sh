@@ -1,4 +1,4 @@
+source "$HOME/.bashrc"
 pip3 install -r requirement.txt
-clear
 
-python3 main.py
+python3.10 main.py
