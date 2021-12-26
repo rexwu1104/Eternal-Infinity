@@ -6,10 +6,13 @@ def is_owner(ctx: commands.Context) -> bool:
 	return ctx.author.id == 606472364271599621
 
 intents = nc.Intents.all()
-bot = commands.Bot(
+bot = commands.AutoShardedBot(
 	command_prefix = 'ei!',
-	intents = intents
-) 
+	intents = intents,
+	shard_count=6
+)
+print(bot.shard_ids)
+bot.shard_ids = [0, 1, 2, 3, 4, 5]
 # bot.remove_command('help')
 
 @bot.event

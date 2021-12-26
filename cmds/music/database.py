@@ -1,4 +1,3 @@
-from sqlite3 import connect
+from pysondb import db
 
-conn = connect('./cmds/music/music.db')
-cur = conn.cursor()
+DJdb = db.getDb('./cmds/music/dj.json')

@@ -4,3 +4,4 @@ uvicorn>=0.15.0
 npytdl>=4.0.6
 orjson>=3.6.5
 pynacl>=1.4.0
+pysondb>=1.6.1
