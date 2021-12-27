@@ -8,15 +8,13 @@ def is_owner(ctx: commands.Context) -> bool:
 intents = nc.Intents.all()
 bot = commands.AutoShardedBot(
 	command_prefix = 'ei!',
-	intents = intents,
-	shard_count=6
+	intents = intents
 )
-print(bot.shard_ids)
-bot.shard_ids = [0, 1, 2, 3, 4, 5]
 # bot.remove_command('help')
 
 @bot.event
 async def on_ready():
+	print(bot.shard_ids)
 	await bot.change_presence(
 		activity = nc.Streaming(
 			name = 'ei!help',

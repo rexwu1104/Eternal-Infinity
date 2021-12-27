@@ -17,7 +17,8 @@ from nextcord import (
 	TextChannel,
 	FFmpegPCMAudio,
 	PCMVolumeTransformer,
-	Member, User
+	Member, User,
+	SelectOption
 )
 from typing import (
 	List,
@@ -26,7 +27,8 @@ from typing import (
 	Any
 )
 from .methods import (
-	play_
+	play_,
+	search_
 )
 from .embeds import (
 	info_embed
@@ -59,20 +61,20 @@ class TimeSource(FFmpegPCMAudio):
 
 class VoiceController:
 	def __init__(self):
-		self.queue = [] # loaded musics
-		self.tmps = [] # waiting for load
-		self.information = [] # the musics infomation
-		self.message = None # use to edit the message content
-		self.DJ = [] # the admin for music system
-		self.now_info = None # the playing music's infomation
-		self.volume = 1.0 # the client's volume
-		self.client = None # the bot voiceClient
-		self.channel = None # the channel of bot join
-		self.loop_range = None # loop the music in this range
-		self.in_sequence = False # is the client in channel?
-		self.position = None # the position of the music in queue
-		self.source = None # the source of music is playing
-		self.time = 0.0 # the time of music
+		self.queue = []
+		self.tmps = []
+		self.information = []
+		self.message = None
+		self.DJ = []
+		self.now_info = None
+		self.volume = 1.0
+		self.client = None
+		self.channel = None
+		self.loop_range = None
+		self.in_sequence = False
+		self.position = None
+		self.source = None
+		self.time = 0.0
 		self.jump = False
 
 	def is_url(self, url: str):
@@ -85,6 +87,21 @@ class VoiceController:
 				re.compile(r'(?:https?://)?(?:youtu\.be/|((?:m|www)\.)*youtube\.com/watch\?(?:.+&)*v=)([\w\-]+)(?:[?&].+)*')
 			]
 		)
+	
+	async def select_options(self, q: str):
+		options = []
+		ysdl = NPytdl.Pytdl()
+		obj_list = await ysdl.resultList(q)
+
+		for obj in obj_list:
+			options.append(SelectOption(
+					label=obj['title'],
+					description='https://youtu.be/' + obj['id'],
+					value='https://youtu.be/' + obj['id']
+				)
+			)
+
+		return options
 
 	async def search(self, q: str, ctx: commands.Context):
 		ysdl = NPytdl.Pytdl()
@@ -112,24 +129,26 @@ class VoiceController:
 		self.tmps[pos] = Empty()
 		return data
 
-	def lengthen(self, size: int):
-		if size == 0:
-			return
-
-		self.queue += [Empty()] * size
+	def lengthen(self):
+		self.queue += [Empty()] * (len(self.tmps) - len(self.queue))
+		self.information += [Empty()] * (len(self.tmps) - len(self.information))
 
 	async def load(self, pos: int):
 		ysdl = NPytdl.Pytdl()
 		data = self.replace(pos)
 
-		self.lengthen(len(self.tmps) - len(self.queue))
+		self.lengthen()
 
 		if type(data[0]) == str:
 			data[0] = await ysdl.info(data[0])
 
 		await data[0].create()
 		if type(data[0]) == NPytdl.YoutubeVideo:
-			if pos == -1:
+			if type(self.information[pos]) == Empty:
+				self.information[pos] = (await ysdl.resultList(
+					data[0].url
+				))[0]
+			else:
 				self.information += [(await ysdl.resultList(
 					data[0].url
 				))[0]]
@@ -143,6 +162,7 @@ class VoiceController:
 			)
 
 		elif type(data[0]) == NPytdl.YoutubeVideos:
+			self.information.pop(len(self.information) - 1)
 			l = len(self.information)
 			self.information += await ysdl.playList(
 				data[0].url.split('=')[1]
@@ -190,18 +210,19 @@ class VoiceController:
 			)
 
 		self.now_pos = self.queue.index(self.queue[pos])
-		self.lengthen(len(self.tmps) - len(self.queue))
+		self.lengthen()
 
-	def play(self):
+	def play(self, *, command=False):
 		if not self.in_sequence:
 			self.client.play(self.source, after=partial(
 				self.handle_next, self.next, self.client.loop
 			))
 
-		asyncio.run_coroutine_threadsafe(
-			self.message.edit(embed=info_embed(self)),
-			self.client.loop
-		)
+		if not command:
+			asyncio.run_coroutine_threadsafe(
+				self.message.edit(embed=info_embed(self)),
+				self.client.loop
+			)
 
 		self.in_sequence = True
 
@@ -215,10 +236,11 @@ class VoiceController:
 		self.time = 0.0
 		self.in_sequence = False
 
+		print(self.now_pos, self.loop_range)
 		if self.jump:
 			self.now_pos -= 1
 			self.jump = False
-
+		
 		if self.loop_range is None:
 			s = await self.load(self.now_pos + 1)
 			if s is False:
@@ -227,9 +249,9 @@ class VoiceController:
 		elif type(self.loop_range) == str:
 			await self.load(random.choice([idx for idx, _ in enumerate(self.tmps)]))
 		elif type(self.loop_range) == int:
-			pass
+			await self.load(self.now_pos)
 		elif type(self.loop_range) == list:
-			if pos < self.loop_range[1]:
+			if self.now_pos < self.loop_range[1]:
 				await self.load(self.now_pos + 1)
 			else:
 				await self.load(self.loop_range[0])
@@ -257,19 +279,19 @@ class VoiceController:
 		self.source.volume = self.volume
 
 	def reset(self):
-		self.queue = [] # loaded musics
-		self.tmps = [] # waiting for load
-		self.information = [] # the musics infomation
-		self.message = None # use to edit the message content
-		self.now_info = None # the playing music's infomation
-		self.volume = 1.0 # the client's volume
-		self.client = None # the bot voiceClient
-		self.vchannel = None # the channel of bot join
-		self.loop_range = None # loop the music in this range
-		self.in_sequence = False # is the client in channel?
-		self.position = None # the position of the music in queue
-		self.source = None # the source of music is playing
-		self.time = 0.0 # the time of music
+		self.queue = []
+		self.tmps = []
+		self.information = []
+		self.message = None
+		self.now_info = None
+		self.volume = 1.0
+		self.client = None
+		self.channel = None
+		self.loop_range = None
+		self.in_sequence = False
+		self.position = None
+		self.source = None
+		self.time = 0.0
 		self.jump = False
 
 class Music(Cog):
@@ -283,7 +305,12 @@ class Music(Cog):
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
 		await ctx.message.delete()
-		await play_(self, ctx, msg, 'play')
+		await play_(self, ctx, msg)
+
+	@commands.command()
+	async def search(self, ctx: commands.Context, *, query: str):
+		await ctx.message.delete()
+		await search_(self, ctx, query)
 
 	@commands.command()
 	async def cc(self, ctx: commands.Context):
