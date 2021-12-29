@@ -11,3 +11,9 @@ stop
 createDJ [name]
 custom_list <"add"|"show"|"delete"> [("add"|"delete")->url|name]
 insert <position>
+
+
+
+
+url:
+https://gist.github.com/InterStella0/b78488fb28cadf279dfd3164b9f0cf96#good-way

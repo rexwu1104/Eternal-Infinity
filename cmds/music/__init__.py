@@ -28,7 +28,10 @@ from typing import (
 )
 from .methods import (
 	play_,
-	search_
+	search_,
+	queue_,
+	nowplay_,
+	loop_
 )
 from .embeds import (
 	info_embed
@@ -60,7 +63,9 @@ class TimeSource(FFmpegPCMAudio):
 		return ret
 
 class VoiceController:
-	def __init__(self):
+	def __init__(self, mbot, **funcs):
+		self.bot = mbot
+		self.funcs = funcs
 		self.queue = []
 		self.tmps = []
 		self.information = []
@@ -72,7 +77,7 @@ class VoiceController:
 		self.channel = None
 		self.loop_range = None
 		self.in_sequence = False
-		self.position = None
+		self.now_pos = None
 		self.source = None
 		self.time = 0.0
 		self.jump = False
@@ -133,7 +138,7 @@ class VoiceController:
 		self.queue += [Empty()] * (len(self.tmps) - len(self.queue))
 		self.information += [Empty()] * (len(self.tmps) - len(self.information))
 
-	async def load(self, pos: int):
+	async def load(self, pos: int, loaded=False):
 		ysdl = NPytdl.Pytdl()
 		data = self.replace(pos)
 
@@ -148,7 +153,7 @@ class VoiceController:
 				self.information[pos] = (await ysdl.resultList(
 					data[0].url
 				))[0]
-			else:
+			elif not self.information[pos]:
 				self.information += [(await ysdl.resultList(
 					data[0].url
 				))[0]]
@@ -237,7 +242,7 @@ class VoiceController:
 		self.in_sequence = False
 
 		print(self.now_pos, self.loop_range)
-		if self.jump:
+		if self.jump and (self.loop_range is None or type(self.loop_range) == list):
 			self.now_pos -= 1
 			self.jump = False
 		
@@ -260,19 +265,43 @@ class VoiceController:
 
 	async def skip(self, num):
 		self.jump = True
-		await self.load(self.now_pos + num)
+
+		loop_range = self.loop_range
+		if type(loop_range) == int:
+			await self.load(self.now_pos)
+		elif type(loop_range) == list:
+			if self.now_pos + num > loop_range[1]:
+				await self.load(loop_range[1])
+			else:
+				await self.load(self.now_pos + num)
+		elif type(loop_range) == str:
+			pass
+		else:
+			await self.load(self.now_pos + num)
+
 		self.client.stop()
 
 	async def prev(self, num):
 		self.jump = True
-		await self.load(self.now_pos - num)
+
+		loop_range = self.loop_range
+		if type(loop_range) == int:
+			await self.load(self.now_pos)
+		elif type(loop_range) == list:
+			if self.now_pos + num < loop_range[0]:
+				await self.load(loop_range[0])
+			else:
+				await self.load(self.now_pos - num)
+		elif type(loop_range) == str:
+			pass
+		else:
+			await self.load(self.now_pos - num)
+
 		self.client.stop()
 
 	def vol(self, volume):
-		if volume > 1.0:
+		if volume >= 1.0:
 			self.volume = min(2.0, volume)
-		elif volume == 1.0:
-			self.volume = 1.0
 		else:
 			self.volume = max(0.0, volume)
 			
@@ -289,7 +318,7 @@ class VoiceController:
 		self.channel = None
 		self.loop_range = None
 		self.in_sequence = False
-		self.position = None
+		self.now_pos = None
 		self.source = None
 		self.time = 0.0
 		self.jump = False
@@ -300,7 +329,13 @@ class Music(Cog):
 
 		self.controllers = {}
 		for guild in self.bot.guilds:
-			self.controllers[guild.id] = VoiceController()
+			self.controllers[guild.id] = VoiceController(self, **{
+				'play': play_,
+				'search': search_,
+				'queue': queue_,
+				'nowplay': nowplay_,
+				'loop': loop_
+			})
 
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
@@ -312,10 +347,28 @@ class Music(Cog):
 		await ctx.message.delete()
 		await search_(self, ctx, query)
 
+	@commands.command(aliases=['q'])
+	async def queue(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await queue_(self, ctx)
+
+	@commands.command(aliases=['np'])
+	async def nowplay(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await nowplay_(self, ctx)
+
 	@commands.command()
-	async def cc(self, ctx: commands.Context):
+	async def loop(self, ctx, t: str = None):
+		await ctx.message.delete()
+		await loop_(self, ctx, t)
+
+	@commands.command()
+	async def cc(self, ctx: commands.Context, sub: str = None):
 		controller = self.controllers[ctx.guild.id]
-		pprint(controller.__dict__)
+		if sub is None:
+			pprint(controller.__dict__)
+		else:
+			pprint(controller.__dict__[sub])
 
 def setup(bot: commands.Bot):
 	bot.add_cog(Music(bot))

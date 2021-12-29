@@ -14,10 +14,20 @@ from nextcord.ui import (
 	Button
 )
 from .embeds import (
-	info_embed
+	info_embed,
+	queue_embed,
+	now_embed
 )
 
 style = ButtonStyle.grey
+
+class MusicSimilar:
+	def __init__(self, guild_id, controller):
+		self.__dict__ = {
+			controllers: {
+				guild_id: controller
+			}
+		}
 
 class FindView(View):
 	def find(self, condition):
@@ -27,6 +37,19 @@ class ControlBoard(FindView):
 	def __init__(self, controller):
 		self.controller = controller
 		super().__init__(timeout=None)
+
+		if self.controller.client.is_paused():
+			self.play_or_pause_.emoji = '▶️'
+		else:
+			self.play_or_pause_.emoji = '⏸️'
+
+		if self.controller.loop_range is None or \
+			 type(self.controller.loop_range) == str:
+			self.loop_.emoji = '➡️'
+		elif type(self.controller.loop_range) == int:
+			self.loop_.emoji = '🔂'
+		elif type(self.controller.loop_range) == list:
+			self.loop_.emoji = '🔁'
 
 	def check(self, member):
 		return self.controller.queue[self.controller.now_pos][1] == member
@@ -171,23 +194,65 @@ class ControlBoard(FindView):
 
 	@button(custom_id='search', style=style, emoji='🔍', row=2)
 	async def search_(self, button: Button, interaction: Interaction):
-		...
+		def check(m):
+			return m.author == interaction.user
+
+		ctx = await self.controller.bot.bot.get_context(
+			self.controller.message
+		)
+
+		await interaction.response.pong()
+
+		s = await ctx.send('**please input any content**')
+		m = await self.controller.bot.bot.wait_for('message', check=check)
+		await s.delete()
+		await m.delete()
+
+		await self.controller.funcs['search'](
+			self.controller.bot,
+			ctx,
+			m.content
+		)
 
 	@button(custom_id='queue', style=style, emoji='📜', row=2)
 	async def queue_(self, button: Button, interaction: Interaction):
-		...
+		await interaction.response.edit_message(
+			embed=queue_embed(self.controller, interaction.user)
+		)
 
 	@button(custom_id='home', style=style, label='🏠', row=2)
 	async def home_(self, button: Button, interaction: Interaction):
-		...
+		await interaction.response.edit_message(
+			embed=info_embed(self.controller)
+		)
 
 	@button(custom_id='info', style=style, emoji='📄', row=2)
 	async def info_(self, button: Button, interaction: Interaction):
-		...
+		await interaction.response.edit_message(
+			embed=now_embed(self.controller, interaction.user)
+		)
 
 	@button(custom_id='play', style=style, emoji='🔎', row=2)
 	async def play_(self, button: Button, interaction: Interaction):
-		...
+		def check(m):
+			return m.author == interaction.user
+
+		ctx = await self.controller.bot.bot.get_context(
+			self.controller.message
+		)
+
+		await interaction.response.pong()
+		
+		s = await ctx.send('**please input any content**')
+		m = await self.controller.bot.bot.wait_for('message', check=check)
+		await s.delete()
+		await m.delete()
+
+		await self.controller.funcs['play'](
+			self.controller.bot,
+			ctx,
+			m.content
+		)
 
 class SelectMenu(Select):
 	def __init__(self, controller, options):
@@ -220,6 +285,10 @@ class SelectMenu(Select):
 			)
 		else:
 			await interaction.message.delete()
+
+			old_pos = self.controller.now_pos
+			await self.controller.load(-1)
+			await self.controller.load(old_pos, loaded=True)
 
 			await self.controller.message.edit(
 				embed=info_embed(self.controller),
