@@ -29,14 +29,15 @@ class MusicSimilar:
 			}
 		}
 
-class FindView(View):
-	def find(self, condition):
-		return [value for idx, value in enumerate(self.children) if condition(value)]
-
-class ControlBoard(FindView):
+class ControlBoard(View):
 	def __init__(self, controller):
 		self.controller = controller
 		super().__init__(timeout=None)
+
+		if self.controller.volume == 0.0:
+			self.whisper_.disabled = True
+		elif self.controller.volume == 2.0:
+			self.lounder_.disabled = True
 
 		if self.controller.client.is_paused():
 			self.play_or_pause_.emoji = '▶️'
@@ -60,9 +61,11 @@ class ControlBoard(FindView):
 			return
 
 		await self.controller.prev(self.controller.now_pos)
-		self.find(lambda i: i.custom_id == 'play_or_pause')[0].emoji = '⏸️'
+		self.play_or_pause_.emoji = '⏸️'
 
-		await interaction.response.edit_message(view=self)
+		await self.controller.message.edit(view=self)
+
+		await interaction.response.pong()
 
 	@button(custom_id='prev', style=style, emoji='⏪', row=0)
 	async def prev_(self, button: Button, interaction: Interaction):
@@ -70,9 +73,11 @@ class ControlBoard(FindView):
 			return
 			
 		await self.controller.prev(1)
-		self.find(lambda i: i.custom_id == 'play_or_pause')[0].emoji = '⏸️'
+		self.play_or_pause_.emoji = '⏸️'
 
-		await interaction.response.edit_message(view=self)
+		await self.controller.message.edit(view=self)
+
+		await interaction.response.pong()
 
 	@button(custom_id='play_or_pause', style=style, emoji='⏸️', row=0)
 	async def play_or_pause_(self, button: Button, interaction: Interaction):
@@ -86,7 +91,9 @@ class ControlBoard(FindView):
 			button.emoji = '▶️'
 			self.controller.client.pause()
 
-		await interaction.response.edit_message(view=self)
+		await self.controller.message.edit(view=self)
+
+		await interaction.response.pong()
 
 	@button(custom_id='next', style=style, emoji='⏩', row=0)
 	async def next_(self, button: Button, interaction: Interaction):
@@ -94,9 +101,11 @@ class ControlBoard(FindView):
 			return
 			
 		await self.controller.skip(1)
-		self.find(lambda i: i.custom_id == 'play_or_pause')[0].emoji = '⏸️'
+		self.play_or_pause_.emoji = '⏸️'
 
-		await interaction.response.edit_message(view=self)
+		await self.controller.message.edit(view=self)
+
+		await interaction.response.pong()
 
 	@button(custom_id='last', style=style, emoji='⏭️', row=0)
 	async def last_(self, button: Button, interaction: Interaction):
@@ -104,9 +113,11 @@ class ControlBoard(FindView):
 			return
 			
 		await self.controller.skip(len(self.controller.tmps) - self.controller.now_pos - 1)
-		self.find(lambda i: i.custom_id == 'play_or_pause')[0].emoji = '⏸️'
+		self.play_or_pause_.emoji = '⏸️'
 
-		await interaction.response.edit_message(view=self)
+		await self.controller.message.edit(view=self)
+
+		await interaction.response.pong()
 
 	@button(custom_id='whisper', style=style, emoji='🔉', row=1)
 	async def whisper_(self, button: Button, interaction: Interaction):
@@ -119,12 +130,14 @@ class ControlBoard(FindView):
 			button.disabled = True
 
 		if self.controller.volume < 2.0:
-			self.find(lambda i: i.custom_id == 'lounder')[0].disabled = False
+			self.lounder_.disabled = False
 
-		await interaction.response.edit_message(
+		await self.controller.message.edit(
 			view=self,
 			embed=info_embed(self.controller)
 		)
+
+		await interaction.response.pong()
 
 	@button(custom_id='suffle', style=style, emoji='🔀', row=1)
 	async def suffle_(self, button: Button, interaction: Interaction):
@@ -133,15 +146,16 @@ class ControlBoard(FindView):
 			
 		if self.controller.loop_range != 'random':
 			self.controller.loop_range = 'random'
-			self.find(lambda i: i.custom_id == 'loop')[0].emoji = '➡️'
+			self.loop_.emoji = '➡️'
 		else:
 			self.controller.loop_range = None
-			interaction.response._responded = True
 
-		await interaction.response.edit_message(
+		await self.controller.message.edit(
 			view=self,
 			embed=info_embed(self.controller)
 		)
+
+		await interaction.response.pong()
 
 	@button(custom_id='stop', style=style, emoji='⏹️', row=1)
 	async def stop_(self, button: Button, interaction: Interaction):
@@ -152,6 +166,8 @@ class ControlBoard(FindView):
 		await interaction.message.delete()
 		await self.controller.client.disconnect()
 		self.controller.reset()
+
+		await interaction.response.pong()
 
 	@button(custom_id='loop', style=style, emoji='➡️', row=1)
 	async def loop_(self, button: Button, interaction: Interaction):
@@ -169,10 +185,12 @@ class ControlBoard(FindView):
 			button.emoji = '➡️'
 			self.controller.loop_range = None
 
-		await interaction.response.edit_message(
+		await self.controller.message.edit(
 			view=self,
 			embed=info_embed(self.controller)
 		)
+
+		await interaction.response.pong()
 
 	@button(custom_id='lounder', style=style, emoji='🔊', row=1)
 	async def lounder_(self, button: Button, interaction: Interaction):
@@ -185,12 +203,14 @@ class ControlBoard(FindView):
 			button.disabled = True
 
 		if self.controller.volume > 0.0:
-			self.find(lambda i: i.custom_id == 'whisper')[0].disabled = False
+			self.whisper_.disabled = False
 
-		await interaction.response.edit_message(
+		await self.controller.message.edit(
 			view=self,
 			embed=info_embed(self.controller)
 		)
+
+		await interaction.response.pong()
 
 	@button(custom_id='search', style=style, emoji='🔍', row=2)
 	async def search_(self, button: Button, interaction: Interaction):
@@ -216,21 +236,27 @@ class ControlBoard(FindView):
 
 	@button(custom_id='queue', style=style, emoji='📜', row=2)
 	async def queue_(self, button: Button, interaction: Interaction):
-		await interaction.response.edit_message(
+		await self.controller.message.edit(
 			embed=queue_embed(self.controller, interaction.user)
 		)
 
+		await interaction.response.pong()
+
 	@button(custom_id='home', style=style, label='🏠', row=2)
 	async def home_(self, button: Button, interaction: Interaction):
-		await interaction.response.edit_message(
+		await self.controller.message.edit(
 			embed=info_embed(self.controller)
 		)
 
+		await interaction.response.pong()
+
 	@button(custom_id='info', style=style, emoji='📄', row=2)
 	async def info_(self, button: Button, interaction: Interaction):
-		await interaction.response.edit_message(
+		await self.controller.message.edit(
 			embed=now_embed(self.controller, interaction.user)
 		)
+
+		await interaction.response.pong()
 
 	@button(custom_id='play', style=style, emoji='🔎', row=2)
 	async def play_(self, button: Button, interaction: Interaction):
@@ -298,7 +324,7 @@ class SelectMenu(Select):
 		await interaction.response.pong()
 		self.view.stop()
 
-class ResultSelect(FindView):
+class ResultSelect(View):
 	def __init__(self, controller, select_menu):
 		self.controller = controller
 		super().__init__(timeout=None)

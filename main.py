@@ -14,7 +14,6 @@ bot = commands.AutoShardedBot(
 
 @bot.event
 async def on_ready():
-	print(bot.shard_ids)
 	await bot.change_presence(
 		activity = nc.Streaming(
 			name = 'ei!help',

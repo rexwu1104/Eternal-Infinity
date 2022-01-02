@@ -2,6 +2,8 @@ import nextcord
 from nextcord.ext import (
 	commands
 )
+import pysondb
+from pysondb import db
 from .embeds import (
 	info_embed,
 	queue_embed,
@@ -12,6 +14,8 @@ from .views import (
 	SelectMenu,
 	ResultSelect
 )
+
+guild_db = db.getDb('./cmds/music/guilds.json')
 
 async def play_(self, ctx: commands.Context, q: str):
 	controller = self.controllers[ctx.guild.id]
@@ -125,9 +129,9 @@ async def loop_(self, ctx: commands.Context, t: str):
 	elif t.lower() == 'random':
 		controller.loop_range = 'random'
 	elif (t.find('-') != -1 and t.count('-') == 1):
-		if controller.now_pos > loop_range[1]:
+		if controller.now_pos > controller.loop_range[1]:
 			await controller.skip(0)
-		elif controller.now_pos < loop_range[0]:
+		elif controller.now_pos < controller.loop_range[0]:
 			await controller.prev(0)
 
 		controller.loop_range = list(map(
@@ -135,9 +139,9 @@ async def loop_(self, ctx: commands.Context, t: str):
 			t.split('-')
 		))
 	elif (t.find('~') != -1 and t.count('~') == 1):
-		if controller.now_pos > loop_range[1]:
+		if controller.now_pos > controller.loop_range[1]:
 			await controller.skip(0)
-		elif controller.now_pos < loop_range[0]:
+		elif controller.now_pos < controller.loop_range[0]:
 			await controller.prev(0)
 
 		controller.loop_range = list(map(
@@ -151,3 +155,115 @@ async def loop_(self, ctx: commands.Context, t: str):
 			controller
 		)
 	)
+
+async def volume_(self, ctx: commands.Context, vol: float):
+	controller = self.controllers[ctx.guild.id]
+
+	if not ctx.author.voice.channel:
+		return
+
+	if not controller.in_sequence and ctx.author.voice.channel != controller.channel:
+		return
+
+	if not controller.message:
+		return
+
+	controller.vol(vol)
+
+	await controller.message.edit(
+		view=ControlBoard(controller),
+		embed=info_embed(
+			controller
+		)
+	)
+
+async def skip_(self, ctx: commands.Context, pos: int):
+	controller = self.controllers[ctx.guild.id]
+
+	if not ctx.author.voice.channel:
+		return
+
+	if not controller.in_sequence and ctx.author.voice.channel != controller.channel:
+		return
+
+	if not controller.message:
+		return
+
+	if pos -1 > len(controller.tmps) or pos - 1 < 1:
+		return
+
+	if pos - 1 > controller.now_pos:
+		await controller.skip(pos - 1 - controller.now_pos)
+	elif pos - 1 < controller.now_pos:
+		await controller.prev(controller.now_pos - pos + 1)
+	else:
+		await controller.skip(0)
+
+async def join_(self, ctx: commands.Context, channel: nextcord.VoiceChannel):
+	controller = self.controllers[ctx.guild.id]
+
+	if not ctx.author.voice.channel:
+		return
+
+	if controller.in_sequence and ctx.author.voice.channel != controller.channel:
+		return
+
+	if not controller.client:
+		if channel is not None:
+			controller.channel = channel
+		else:
+			controller.channel = ctx.author.voice.channel
+			
+		controller.client = await controller.channel.connect()
+
+async def leave_(self, ctx: commands.Context):
+	controller = self.controllers[ctx.guild.id]
+
+	if not ctx.author.voice.channel:
+		return
+
+	if ctx.author.voice.channel != controller.channel:
+		return
+
+	await controller.client.disconnect()
+	controller.client.stop()
+
+	controller.reset()
+
+async def stop_(self, ctx: commands.Context):
+	controller = self.controllers[ctx.guild.id]
+
+	if not ctx.author.voice.channel:
+		return
+
+	if not controller.in_sequence and ctx.author.voice.channel != controller.channel:
+		return
+
+	if not controller.message:
+		return
+
+	controller.client.pause()
+
+	await controller.message.edit(
+		view=ControlBoard(controller)
+	)
+
+async def create_dj_(self, ctx: commands.Context, name: str):
+	try:
+		data = guild_db.find(ctx.guild.id)
+		return
+	except pysondb.errors.db_errors.IdNotFoundError as e:
+		role = await ctx.guild.create_role(
+			name=name,
+			mentionable=False
+		)
+
+		data = {
+			'dj_role_id': role.id,
+			'name': name,
+			'id': ctx.guild.id
+		}
+		guild_db.add(data)
+
+async def remove_(self, ctx: commands.Context, pos: int):
+	...

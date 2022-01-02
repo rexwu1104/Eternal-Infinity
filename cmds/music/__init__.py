@@ -12,12 +12,10 @@ from nextcord.ui import (
 	View
 )
 from nextcord import (
-	VoiceClient,
+	Guild,
 	VoiceChannel,
-	TextChannel,
 	FFmpegPCMAudio,
 	PCMVolumeTransformer,
-	Member, User,
 	SelectOption
 )
 from typing import (
@@ -31,7 +29,13 @@ from .methods import (
 	search_,
 	queue_,
 	nowplay_,
-	loop_
+	loop_,
+	volume_,
+	skip_,
+	join_,
+	leave_,
+	stop_,
+	create_dj_
 )
 from .embeds import (
 	info_embed
@@ -147,7 +151,11 @@ class VoiceController:
 		if type(data[0]) == str:
 			data[0] = await ysdl.info(data[0])
 
-		await data[0].create()
+		if type(data[0]) == NPytdl.YoutubeVideo:
+			await data[0].create(cookie_file='./cookie.txt')
+		else:
+			await data[0].create()
+
 		if type(data[0]) == NPytdl.YoutubeVideo:
 			if type(self.information[pos]) == Empty:
 				self.information[pos] = (await ysdl.resultList(
@@ -181,7 +189,7 @@ class VoiceController:
 			))
 
 			loaded = data.pop(0)
-			await loaded[0].create()
+			await loaded[0].create(cookie_file='./cookie.txt')
 
 			self.queue[pos] = loaded
 			self.tmps += data
@@ -240,6 +248,7 @@ class VoiceController:
 			
 		self.time = 0.0
 		self.in_sequence = False
+		self.source.cleanup()
 
 		print(self.now_pos, self.loop_range)
 		if self.jump and (self.loop_range is None or type(self.loop_range) == list):
@@ -334,8 +343,30 @@ class Music(Cog):
 				'search': search_,
 				'queue': queue_,
 				'nowplay': nowplay_,
-				'loop': loop_
+				'loop': loop_,
+				'volume': volume_,
+				'skip': skip_,
+				'join': join_,
+				'leave': leave_,
+				'stop': stop_,
+				'create_dj': create_dj_
 			})
+
+	@commands.Cog.listener()
+	async def on_guild_join(self, guild: Guild):
+		self.controllers[guild.id] = VoiceController(self, **{
+			'play': play_,
+			'search': search_,
+			'queue': queue_,
+			'nowplay': nowplay_,
+			'loop': loop_,
+			'volume': volume_,
+			'skip': skip_,
+			'join': join_,
+			'leave': leave_,
+			'stop': stop_,
+			'create_dj': create_dj_
+		})
 
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
@@ -358,9 +389,46 @@ class Music(Cog):
 		await nowplay_(self, ctx)
 
 	@commands.command()
-	async def loop(self, ctx, t: str = None):
+	async def loop(self, ctx: commands.Context, t: str = None):
 		await ctx.message.delete()
 		await loop_(self, ctx, t)
+
+	@commands.command(aliases=['vol'])
+	async def volume(self, ctx: commands.Context, vol: float):
+		await ctx.message.delete()
+		await volume_(self, ctx, vol)
+
+	@commands.command(aliases=['s'])
+	async def skip(self, ctx: commands.Context, pos: int = 1):
+		await ctx.message.delete()
+		await skip_(self, ctx, pos)
+
+	@commands.command(aliases=['j', 'connect'])
+	async def join(self, ctx: commands.Context, channel: VoiceChannel = None):
+		await ctx.message.delete()
+		await join_(self, ctx, channel)
+
+	@commands.command(aliases=['dc', 'disconnect'])
+	async def leave(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await leave_(self, ctx)
+
+	@commands.command()
+	async def stop(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await skip_(self, ctx)
+
+	@commands.command(aliases=['cd'])
+	async def createdj(self, ctx: commands.Context, name: str = 'DJ'):
+		await ctx.message.delete()
+		await skip_(self, ctx, name)
+
+	@commands.command()
+	async def fix(self, ctx: commands.Context):
+		await ctx.message.delete()
+		controller = self.controllers[ctx.guild.id]
+
+		controller.reset()
 
 	@commands.command()
 	async def cc(self, ctx: commands.Context, sub: str = None):
