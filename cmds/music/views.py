@@ -55,33 +55,34 @@ class ControlBoard(View):
 	def check(self, member):
 		return self.controller.queue[self.controller.now_pos][1] == member
 
+	def check_dj(self, member):
+		return member in self.controller.DJs
+
 	@button(custom_id='first', style=style, emoji='⏮️', row=0)
 	async def first_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check_dj(interaction.user):
 			return
 
 		await self.controller.prev(self.controller.now_pos)
+		await interaction.response.defer()
 		self.play_or_pause_.emoji = '⏸️'
 
 		await self.controller.message.edit(view=self)
-
-		await interaction.response.pong()
 
 	@button(custom_id='prev', style=style, emoji='⏪', row=0)
 	async def prev_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check(interaction.user) or not self.check_dj(interaction.user):
 			return
 			
 		await self.controller.prev(1)
+		await interaction.response.defer()
 		self.play_or_pause_.emoji = '⏸️'
 
 		await self.controller.message.edit(view=self)
 
-		await interaction.response.pong()
-
 	@button(custom_id='play_or_pause', style=style, emoji='⏸️', row=0)
 	async def play_or_pause_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check(interaction.user) or not self.check_dj(interaction.user):
 			return
 			
 		if self.controller.client.is_paused():
@@ -97,27 +98,25 @@ class ControlBoard(View):
 
 	@button(custom_id='next', style=style, emoji='⏩', row=0)
 	async def next_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check(interaction.user) or not self.check_dj(interaction.user):
 			return
 			
 		await self.controller.skip(1)
+		await interaction.response.defer()
 		self.play_or_pause_.emoji = '⏸️'
 
 		await self.controller.message.edit(view=self)
-
-		await interaction.response.pong()
 
 	@button(custom_id='last', style=style, emoji='⏭️', row=0)
 	async def last_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check_dj(interaction.user):
 			return
 			
 		await self.controller.skip(len(self.controller.tmps) - self.controller.now_pos - 1)
+		await interaction.response.defer()
 		self.play_or_pause_.emoji = '⏸️'
 
 		await self.controller.message.edit(view=self)
-
-		await interaction.response.pong()
 
 	@button(custom_id='whisper', style=style, emoji='🔉', row=1)
 	async def whisper_(self, button: Button, interaction: Interaction):
@@ -141,7 +140,7 @@ class ControlBoard(View):
 
 	@button(custom_id='suffle', style=style, emoji='🔀', row=1)
 	async def suffle_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check_dj(interaction.user):
 			return
 			
 		if self.controller.loop_range != 'random':
@@ -159,7 +158,7 @@ class ControlBoard(View):
 
 	@button(custom_id='stop', style=style, emoji='⏹️', row=1)
 	async def stop_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check_dj(interaction.user):
 			return
 			
 		self.stop()
@@ -171,7 +170,7 @@ class ControlBoard(View):
 
 	@button(custom_id='loop', style=style, emoji='➡️', row=1)
 	async def loop_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check_dj(interaction.user):
 			return
 			
 		if self.controller.loop_range is None:
@@ -221,7 +220,7 @@ class ControlBoard(View):
 			self.controller.message
 		)
 
-		await interaction.response.pong()
+		await interaction.response.defer()
 
 		s = await ctx.send('**please input any content**')
 		m = await self.controller.bot.bot.wait_for('message', check=check)
@@ -267,7 +266,7 @@ class ControlBoard(View):
 			self.controller.message
 		)
 
-		await interaction.response.pong()
+		await interaction.response.defer()
 		
 		s = await ctx.send('**please input any content**')
 		m = await self.controller.bot.bot.wait_for('message', check=check)

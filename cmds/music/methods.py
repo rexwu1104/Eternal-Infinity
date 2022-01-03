@@ -16,6 +16,7 @@ from .views import (
 )
 
 guild_db = db.getDb('./cmds/music/guilds.json')
+member_db = db.getDb('./cmds/music/members.json')
 
 async def play_(self, ctx: commands.Context, q: str):
 	controller = self.controllers[ctx.guild.id]
@@ -47,8 +48,8 @@ async def play_(self, ctx: commands.Context, q: str):
 
 	if controller.message is None:
 		msg = await ctx.send(
-			embed=info_embed(controller),
-			view=ControlBoard(controller)
+			view=ControlBoard(controller),
+			embed=info_embed(controller)
 		)
 		controller.message = msg
 	else:
@@ -151,9 +152,7 @@ async def loop_(self, ctx: commands.Context, t: str):
 
 	await controller.message.edit(
 		view=ControlBoard(controller),
-		embed=info_embed(
-			controller
-		)
+		embed=info_embed(controller)
 	)
 
 async def volume_(self, ctx: commands.Context, vol: float):
@@ -172,9 +171,7 @@ async def volume_(self, ctx: commands.Context, vol: float):
 
 	await controller.message.edit(
 		view=ControlBoard(controller),
-		embed=info_embed(
-			controller
-		)
+		embed=info_embed(controller)
 	)
 
 async def skip_(self, ctx: commands.Context, pos: int):
@@ -249,10 +246,9 @@ async def stop_(self, ctx: commands.Context):
 	)
 
 async def create_dj_(self, ctx: commands.Context, name: str):
-	try:
-		data = guild_db.find(ctx.guild.id)
-		return
-	except pysondb.errors.db_errors.IdNotFoundError as e:
+	data = guild_db.getBy({'guild_id': ctx.guild.id})
+
+	if len(data) == 0:
 		role = await ctx.guild.create_role(
 			name=name,
 			mentionable=False
@@ -261,9 +257,30 @@ async def create_dj_(self, ctx: commands.Context, name: str):
 		data = {
 			'dj_role_id': role.id,
 			'name': name,
-			'id': ctx.guild.id
+			'guild_id': ctx.guild.id
 		}
 		guild_db.add(data)
 
 async def remove_(self, ctx: commands.Context, pos: int):
-	...
+	controller = self.controllers[ctx.guild.id]
+
+	if not ctx.author.voice.channel:
+		return
+
+	if not controller.in_sequence and ctx.author.voice.channel != controller.channel:
+		return
+
+	if not controller.message:
+		return
+	
+	controller.tmps.pop(pos - 1)
+	controller.queue.pop(pos - 1)
+	controller.information.pop(pos - 1)
+
+	if pos - 1 == controller.now_pos:
+		await controller.skip(0)
+
+	await controller.message.edit(
+		view=ControlBoard(controller),
+		embed=info_embed(controller)
+	)

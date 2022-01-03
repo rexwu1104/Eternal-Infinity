@@ -6,8 +6,8 @@ import asyncio
 from core.cog_append import Cog
 from functools import partial
 from pprint import pprint
+from pysondb import db
 from nextcord.ext import commands
-from nextcord.opus import Encoder as OpusEncoder
 from nextcord.ui import (
 	View
 )
@@ -35,7 +35,8 @@ from .methods import (
 	join_,
 	leave_,
 	stop_,
-	create_dj_
+	create_dj_,
+	remove_
 )
 from .embeds import (
 	info_embed
@@ -44,6 +45,7 @@ from .embeds import (
 OPTIONS = {
 	'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5', 'options': '-vn'
 }
+guild_db = db.getDb('./cmds/music/guilds.json')
 
 def is_owner(ctx: commands.Context) -> bool:
 	return ctx.author.id == 606472364271599621
@@ -74,7 +76,7 @@ class VoiceController:
 		self.tmps = []
 		self.information = []
 		self.message = None
-		self.DJ = []
+		self.DJs = []
 		self.now_info = None
 		self.volume = 1.0
 		self.client = None
@@ -86,14 +88,26 @@ class VoiceController:
 		self.time = 0.0
 		self.jump = False
 
+	def load_dj(self, guild):
+		data = guild_db.getBy({'guild_id': guild.id})
+
+		if len(data) == 0:
+			return
+
+		dj_id = data[0]['dj_role_id']
+
+		for member in guild.members:
+			if member.get_role(dj_id) is not None:
+				self.DJs.append(member)
+
 	def is_url(self, url: str):
 		return 1 in map(
 			lambda r: 1 if r.search(url) else 0,
 			[
 				re.compile(r'(?:https?://)?open\.spotify\.com/(album|playlist)/([\w\-]+)(?:[?&].+)*'),
-				re.compile(r'(?:https?://)?(?:youtu\.be/|((?:m|www)\.)*youtube\.com/playlist\?(?:.+&)*list=)([\w\-]+)(?:[?&].+)*'),
+				re.compile(r'(?:https?://)?(?:youtu\.be/|(?:(?:m|www)\.)*youtube\.com/playlist\?(?:.+&)*list=)([\w\-]+)(?:[?&].+)*'),
 				re.compile(r'(?:https?://)?open\.spotify\.com/track/([\w\-]+)(?:[?&].+)*'),
-				re.compile(r'(?:https?://)?(?:youtu\.be/|((?:m|www)\.)*youtube\.com/watch\?(?:.+&)*v=)([\w\-]+)(?:[?&].+)*')
+				re.compile(r'(?:https?://)?(?:youtu\.be/|(?:(?:m|www)\.)*youtube\.com/watch\?(?:.+&)*v=)([\w\-]+)(?:[?&].+)*')
 			]
 		)
 	
@@ -199,10 +213,52 @@ class VoiceController:
 			)
 
 		elif type(data[0]) == NPytdl.SpotifyMusic:
-			...
+			self.information.pop(len(self.information) - 1)
+			l = len(self.information)
+			self.information += await ysdl.spotifyTrack(
+				data[0].url.split('/')[4]
+			)
+
+			self.now_info = self.information[l]
+
+			data = list(map(
+				lambda v: [v, data[1]],
+				data[0].music
+			))
+
+			loaded = data.pop(0)
+			await loaded[0].create(cookie_file='./cookie.txt')
+
+			self.queue[pos] = loaded
+			self.tmps += data
+			self.source = PCMVolumeTransformer(TimeSource(
+					self, loaded[0].voice_url, **OPTIONS
+				), self.volume
+			)
 			
 		elif type(data[0]) == NPytdl.SpotifyMusics:
-			...
+			self.information.pop(len(self.information) - 1)
+			l = len(self.information)
+			self.information += await ysdl.spotifyPlayList(
+				data[0].url.split('/')[4]
+			)
+
+			self.now_info = self.information[l]
+
+			data = list(map(
+				lambda v: [v, data[1]],
+				data[0].musicList
+			))
+
+			loaded = data.pop(0)
+			await loaded[0].create(cookie_file='./cookie.txt')
+
+			self.queue[pos] = loaded
+			self.tmps += data
+			self.source = PCMVolumeTransformer(TimeSource(
+					self, loaded[0].voice_url, **OPTIONS
+				), self.volume
+			)
 
 		else:
 			if pos > len(self.tmps) and pos != -1:
@@ -351,6 +407,7 @@ class Music(Cog):
 				'stop': stop_,
 				'create_dj': create_dj_
 			})
+			self.controllers[guild.id].load_dj(guild)
 
 	@commands.Cog.listener()
 	async def on_guild_join(self, guild: Guild):
@@ -367,6 +424,22 @@ class Music(Cog):
 			'stop': stop_,
 			'create_dj': create_dj_
 		})
+
+	@commands.Cog.listener()
+	async def on_member_update(self, before, after):
+		data = guild_db.getBy({'guild_id': after.guild.id})
+
+		if len(data) == 0:
+			return
+
+		dj_id = data[0]['dj_role_id']
+
+		if before.get_role(dj_id) and not after.get_role(dj_id):
+			self.controllers[after.guild.id].pop(
+				self.controllers[after.guild.id].index(after)
+			)
+		elif not before.get_role(dj_id) and after.get_role(dj_id):
+			self.controllers[after.guild.id].append(after)
 
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
@@ -416,12 +489,17 @@ class Music(Cog):
 	@commands.command()
 	async def stop(self, ctx: commands.Context):
 		await ctx.message.delete()
-		await skip_(self, ctx)
+		await stop_(self, ctx)
 
 	@commands.command(aliases=['cd'])
-	async def createdj(self, ctx: commands.Context, name: str = 'DJ'):
+	async def createdj(self, ctx: commands.Context, *, name: str = 'DJ'):
 		await ctx.message.delete()
-		await skip_(self, ctx, name)
+		await create_dj_(self, ctx, name)
+
+	@commands.command()
+	async def remove(self, ctx: commands.Context, pos: int):
+		await ctx.message.delete()
+		await remove_(self, ctx, pos)
 
 	@commands.command()
 	async def fix(self, ctx: commands.Context):
@@ -435,7 +513,7 @@ class Music(Cog):
 		controller = self.controllers[ctx.guild.id]
 		if sub is None:
 			pprint(controller.__dict__)
-		else:
+		elif sub in controller.__dict__:
 			pprint(controller.__dict__[sub])
 
 def setup(bot: commands.Bot):

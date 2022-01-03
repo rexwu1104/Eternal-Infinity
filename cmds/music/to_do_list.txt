@@ -1,16 +1,5 @@
-play [url|query]
-search <query>
-loop ["all"|range]
-volume <volume>
-queue [page]
-skip [position]
-join [channel]
-leave
-nowplay
-stop
-createDJ [name]
 custom_list <"add"|"show"|"delete"> [("add"|"delete")->url|name]
-insert <position>
+insert <position> <query>
 
 
 
