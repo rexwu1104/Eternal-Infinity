@@ -320,7 +320,7 @@ class SelectMenu(Select):
 				view=ControlBoard(self.controller)
 			)
 
-		await interaction.response.pong()
+		await interaction.response.defer()
 		self.view.stop()
 
 class ResultSelect(View):
