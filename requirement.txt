@@ -1,4 +1,5 @@
 nextcord[speed]>=2.0.0a3
+lavaplayer>=1.0.3a0
 fastapi>=0.70.0
 uvicorn>=0.15.0
 npytdl>=4.1.0b2

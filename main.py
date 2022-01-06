@@ -24,11 +24,11 @@ async def on_ready():
 	if bot.loop.is_running():
 		from multiprocessing import Process
 		from web.backend import start_server
-		proc = Process(
+		proc1 = Process(
 			target = start_server,
 			daemon = True
 		)
-		proc.start()
+		proc1.start()
 	
 	for fin in os.listdir('./cmds'):
 		if fin.endswith('.py'):
