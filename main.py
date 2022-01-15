@@ -1,4 +1,5 @@
 import os
+import asyncio
 import nextcord as nc
 from nextcord.ext import commands
 
@@ -7,17 +8,17 @@ def is_owner(ctx: commands.Context) -> bool:
 
 intents = nc.Intents.all()
 bot = commands.AutoShardedBot(
-	command_prefix = 'ei!',
-	intents = intents
+	command_prefix='eit!',
+	intents=intents
 )
 # bot.remove_command('help')
 
 @bot.event
 async def on_ready():
 	await bot.change_presence(
-		activity = nc.Streaming(
-			name = 'ei!help',
-			url = 'https://www.twitch.tv/yee6nextcord'
+		activity=nc.Streaming(
+			name='eit!help',
+			url='https://www.twitch.tv/yee6nextcord'
 		)
 	)
 
@@ -25,8 +26,8 @@ async def on_ready():
 		from multiprocessing import Process
 		from web.backend import start_server
 		proc1 = Process(
-			target = start_server,
-			daemon = True
+			target=start_server,
+			daemon=True
 		)
 		proc1.start()
 	
