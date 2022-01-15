@@ -4,7 +4,10 @@ import NPytdl
 import orjson
 import asyncio
 from core.cog_append import Cog
-from functools import partial
+from functools import (
+	partial,
+	wraps
+)
 from pprint import pprint
 from pysondb import db
 from nextcord.ext import commands
@@ -36,10 +39,16 @@ from .methods import (
 	leave_,
 	stop_,
 	create_dj_,
-	remove_
+	remove_,
+	alias_,
+	custom_,
+	insert_
 )
 from .embeds import (
 	info_embed
+)
+from .functions import (
+	_duration_to_second
 )
 
 OPTIONS = {
@@ -353,7 +362,7 @@ class VoiceController:
 		if type(loop_range) == int:
 			await self.load(self.now_pos)
 		elif type(loop_range) == list:
-			if self.now_pos + num < loop_range[0]:
+			if self.now_pos - num < loop_range[0]:
 				await self.load(loop_range[0])
 			else:
 				await self.load(self.now_pos - num)
@@ -435,11 +444,11 @@ class Music(Cog):
 		dj_id = data[0]['dj_role_id']
 
 		if before.get_role(dj_id) and not after.get_role(dj_id):
-			self.controllers[after.guild.id].pop(
-				self.controllers[after.guild.id].index(after)
+			self.controllers[after.guild.id].DJs.pop(
+				self.controllers[after.guild.id].DJs.index(after)
 			)
 		elif not before.get_role(dj_id) and after.get_role(dj_id):
-			self.controllers[after.guild.id].append(after)
+			self.controllers[after.guild.id].DJs.append(after)
 
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
@@ -500,6 +509,11 @@ class Music(Cog):
 	async def remove(self, ctx: commands.Context, pos: int):
 		await ctx.message.delete()
 		await remove_(self, ctx, pos)
+
+	@commands.command(aliases=['a'])
+	async def alias(self, ctx: commands.Context, alias: str, *, sub: str):
+		await ctx.message.delete()
+		await alias_(self, ctx, alias, sub)
 
 	@commands.command()
 	async def fix(self, ctx: commands.Context):

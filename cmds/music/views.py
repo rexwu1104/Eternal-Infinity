@@ -56,7 +56,7 @@ class ControlBoard(View):
 		return self.controller.queue[self.controller.now_pos][1] == member
 
 	def check_dj(self, member):
-		return member in self.controller.DJs
+		return member in self.controller.DJs or len(member.voice.channel.members) == 2
 
 	@button(custom_id='first', style=style, emoji='⏮️', row=0)
 	async def first_(self, button: Button, interaction: Interaction):
@@ -71,7 +71,7 @@ class ControlBoard(View):
 
 	@button(custom_id='prev', style=style, emoji='⏪', row=0)
 	async def prev_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user) or not self.check_dj(interaction.user):
+		if not self.check(interaction.user) and not self.check_dj(interaction.user):
 			return
 			
 		await self.controller.prev(1)
@@ -82,7 +82,7 @@ class ControlBoard(View):
 
 	@button(custom_id='play_or_pause', style=style, emoji='⏸️', row=0)
 	async def play_or_pause_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user) or not self.check_dj(interaction.user):
+		if not self.check(interaction.user) and not self.check_dj(interaction.user):
 			return
 			
 		if self.controller.client.is_paused():
@@ -98,7 +98,7 @@ class ControlBoard(View):
 
 	@button(custom_id='next', style=style, emoji='⏩', row=0)
 	async def next_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user) or not self.check_dj(interaction.user):
+		if not self.check(interaction.user) and not self.check_dj(interaction.user):
 			return
 			
 		await self.controller.skip(1)
@@ -219,6 +219,7 @@ class ControlBoard(View):
 		ctx = await self.controller.bot.bot.get_context(
 			self.controller.message
 		)
+		ctx.author = interaction.user
 
 		await interaction.response.defer()
 
@@ -265,6 +266,7 @@ class ControlBoard(View):
 		ctx = await self.controller.bot.bot.get_context(
 			self.controller.message
 		)
+		ctx.author = interaction.user
 
 		await interaction.response.defer()
 		

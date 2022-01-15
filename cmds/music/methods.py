@@ -14,18 +14,15 @@ from .views import (
 	SelectMenu,
 	ResultSelect
 )
-from .functions import (
-	_duration_to_second
-)
 
 guild_db = db.getDb('./cmds/music/guilds.json')
 member_db = db.getDb('./cmds/music/members.json')
 
-def check(self, member):
-	return self.controller.queue[self.controller.now_pos][1] == member
+def check(member, controller):
+	return controller.queue[controller.now_pos][1] == member
 
-def check_dj(self, member):
-	return member in self.controller.DJs
+def check_dj(member, controller):
+	return member in controller.DJs
 
 async def play_(self, ctx: commands.Context, q: str):
 	controller = self.controllers[ctx.guild.id]
@@ -44,23 +41,23 @@ async def play_(self, ctx: commands.Context, q: str):
 		choices = q.split(' ')
 
 		if choices[-1].isdigit():
-			alias = choices[1:len(choices)-2]
-			idx = choices[-1]
+			alias = choices[1]
+			idx = choices[2]
 
 			data = member_db.getBy({'member_id': ctx.author.id})
 			if len(data) == 0:
 				return
 
-			q = data[0]['aliases'][idx]
+			q = data[0]['aliases'][alias][idx]
 		else:
-			alias = choices[1:len(choices)-1]
-			idx = choices[-1]
+			alias = choices[1]
+			idx = 0
 
 			data = member_db.getBy({'member_id': ctx.author.id})
 			if len(data) == 0:
 				return
 
-			q = data[0]['aliases'][idx]
+			q = data[0]['aliases'][alias][idx]
 
 	if controller.is_url(q):
 		controller.tmps.append([
@@ -142,7 +139,7 @@ async def nowplay_(self, ctx: commands.Context):
 async def loop_(self, ctx: commands.Context, t: str):
 	controller = self.controllers[ctx.guild.id]
 
-	if not check_dj(ctx.author):
+	if not check_dj(ctx.author, controller):
 		return
 
 	if not ctx.author.voice.channel:
@@ -211,7 +208,7 @@ async def volume_(self, ctx: commands.Context, vol: float):
 async def skip_(self, ctx: commands.Context, pos: int):
 	controller = self.controllers[ctx.guild.id]
 	
-	if not check_dj(ctx.author) or (not check(ctx.author) and pos == controller.now_pos + 1):
+	if not check_dj(ctx.author, controller) or (not check(ctx.author, controller) and pos == controller.now_pos + 1):
 		return
 
 	if not ctx.author.voice.channel:
@@ -260,6 +257,7 @@ async def leave_(self, ctx: commands.Context):
 		return
 
 	await controller.client.disconnect()
+	await controller.message.delete()
 	controller.client.stop()
 
 	controller.reset()
@@ -267,7 +265,7 @@ async def leave_(self, ctx: commands.Context):
 async def stop_(self, ctx: commands.Context):
 	controller = self.controllers[ctx.guild.id]
 
-	if not check_dj(ctx.author) or not check(ctx.author):
+	if not check_dj(ctx.author, controller) or not check(ctx.author, controller):
 		return
 
 	if not ctx.author.voice.channel:
@@ -304,7 +302,7 @@ async def create_dj_(self, ctx: commands.Context, name: str):
 async def remove_(self, ctx: commands.Context, pos: int):
 	controller = self.controllers[ctx.guild.id]
 
-	if not check_dj(ctx.author) or not check(ctx.author):
+	if not check_dj(ctx.author, controller) or not check(ctx.author, controller):
 		return
 
 	if not ctx.author.voice.channel:
@@ -343,9 +341,6 @@ async def alias_(self, ctx: commands.Context, alias: str, sub: str):
 		data = data[0]
 		data['aliases'][alias].append(sub)
 		member_db.add(data)
-
-async def seek_(self, ctx: commands.Context, duration: str):
-	...
 
 async def custom_(self, ctx: commands.Context, option: str, action: str = None):
 	...
