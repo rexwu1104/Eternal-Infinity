@@ -19,10 +19,10 @@ guild_db = db.getDb('./cmds/music/guilds.json')
 member_db = db.getDb('./cmds/music/members.json')
 
 def check(member, controller):
-	return controller.queue[controller.now_pos][1] == member
+	return controller.queue[controller.now_pos][1] == member and member.voice is not None
 
 def check_dj(member, controller):
-	return member in controller.DJs
+	return member in controller.DJs or len(member.voice.channel.members) == 2
 
 async def play_(self, ctx: commands.Context, q: str):
 	controller = self.controllers[ctx.guild.id]
@@ -347,3 +347,7 @@ async def custom_(self, ctx: commands.Context, option: str, action: str = None):
 
 async def insert_(self, ctx: commands.Context, pos: int, msg: str):
 	...
+
+async def together_(self, ctx: commands.Context):
+	link = await self.bot.togetherControl.create_link(ctx.author.voice.channel.id, 'youtube')
+	await ctx.send("__click this!!!__\n{}".format(link))

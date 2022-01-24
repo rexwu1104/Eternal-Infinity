@@ -53,7 +53,7 @@ class ControlBoard(View):
 			self.loop_.emoji = '🔁'
 
 	def check(self, member):
-		return self.controller.queue[self.controller.now_pos][1] == member
+		return self.controller.queue[self.controller.now_pos][1] == member and member.voice is not None
 
 	def check_dj(self, member):
 		return member in self.controller.DJs or len(member.voice.channel.members) == 2
@@ -120,7 +120,7 @@ class ControlBoard(View):
 
 	@button(custom_id='whisper', style=style, emoji='🔉', row=1)
 	async def whisper_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check(interaction.user) or not self.check_dj(interaction.user):
 			return
 			
 		self.controller.vol(self.controller.volume - 0.1)
@@ -193,7 +193,7 @@ class ControlBoard(View):
 
 	@button(custom_id='lounder', style=style, emoji='🔊', row=1)
 	async def lounder_(self, button: Button, interaction: Interaction):
-		if not self.check(interaction.user):
+		if not self.check(interaction.user) or not self.check_dj(interaction.user):
 			return
 			
 		self.controller.vol(self.controller.volume + 0.1)

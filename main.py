@@ -1,22 +1,24 @@
 import os
 import nextcord as nc
 from nextcord.ext import commands
+from discord_together import DiscordTogether
 
 def is_owner(ctx: commands.Context) -> bool:
 	return ctx.author.id == 606472364271599621
 
 intents = nc.Intents.all()
 bot = commands.AutoShardedBot(
-	command_prefix = 'ei!',
+	command_prefix = 'e!',
 	intents = intents
 )
 # bot.remove_command('help')
 
 @bot.event
 async def on_ready():
+	bot.togetherControl = await DiscordTogether(os.environ['token'])
 	await bot.change_presence(
 		activity = nc.Streaming(
-			name = 'ei!help',
+			name = 'e!help',
 			url = 'https://www.twitch.tv/yee6nextcord'
 		)
 	)

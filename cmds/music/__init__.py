@@ -8,6 +8,7 @@ from functools import (
 	partial,
 	wraps
 )
+from pyppeteer import launch
 from pprint import pprint
 from pysondb import db
 from nextcord.ext import commands
@@ -27,7 +28,7 @@ from typing import (
 	Union,
 	Any
 )
-from .methods import (
+from .audio_methods import (
 	play_,
 	search_,
 	queue_,
@@ -42,7 +43,8 @@ from .methods import (
 	remove_,
 	alias_,
 	custom_,
-	insert_
+	insert_,
+	together_
 )
 from .embeds import (
 	info_embed
@@ -77,7 +79,7 @@ class TimeSource(FFmpegPCMAudio):
 
 		return ret
 
-class VoiceController:
+class AudioVoiceController:
 	def __init__(self, mbot, **funcs):
 		self.bot = mbot
 		self.funcs = funcs
@@ -315,7 +317,6 @@ class VoiceController:
 		self.in_sequence = False
 		self.source.cleanup()
 
-		print(self.now_pos, self.loop_range)
 		if self.jump and (self.loop_range is None or type(self.loop_range) == list):
 			self.now_pos -= 1
 			self.jump = False
@@ -397,13 +398,25 @@ class VoiceController:
 		self.time = 0.0
 		self.jump = False
 
+class VideoVoiceController:
+	def __init__(self):
+		self.queue = []
+		self.tmps = []
+		self.information = []
+		self.now_info = None
+		self.client = None
+		self.channel = None
+		self.now_pos = None
+		self.jump = False
+
 class Music(Cog):
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
 		self.controllers = {}
+		self.vcontrollers = {}
 		for guild in self.bot.guilds:
-			self.controllers[guild.id] = VoiceController(self, **{
+			self.controllers[guild.id] = AudioVoiceController(self, **{
 				'play': play_,
 				'search': search_,
 				'queue': queue_,
@@ -417,10 +430,11 @@ class Music(Cog):
 				'create_dj': create_dj_
 			})
 			self.controllers[guild.id].load_dj(guild)
+			self.vcontrollers[guild.id] = VideoVoiceController()
 
 	@commands.Cog.listener()
 	async def on_guild_join(self, guild: Guild):
-		self.controllers[guild.id] = VoiceController(self, **{
+		self.controllers[guild.id] = AudioVoiceController(self, **{
 			'play': play_,
 			'search': search_,
 			'queue': queue_,
@@ -433,6 +447,7 @@ class Music(Cog):
 			'stop': stop_,
 			'create_dj': create_dj_
 		})
+		self.vcontrollers[guild.id] = VideoVoiceController()
 
 	@commands.Cog.listener()
 	async def on_member_update(self, before, after):
@@ -449,6 +464,102 @@ class Music(Cog):
 			)
 		elif not before.get_role(dj_id) and after.get_role(dj_id):
 			self.controllers[after.guild.id].DJs.append(after)
+
+	@commands.group()
+	async def music(self, ctx: commands.Context):
+		...
+
+	@music.command(aliases=['p'])
+	async def play(self, ctx: commands.Context, *, msg: str):
+		await ctx.message.delete()
+		await play_(self, ctx, msg)
+
+	@music.command()
+	async def search(self, ctx: commands.Context, *, query: str):
+		await ctx.message.delete()
+		await search_(self, ctx, query)
+
+	@music.command(aliases=['q'])
+	async def queue(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await queue_(self, ctx)
+
+	@music.command(aliases=['np'])
+	async def nowplay(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await nowplay_(self, ctx)
+
+	@music.command()
+	async def loop(self, ctx: commands.Context, t: str = None):
+		await ctx.message.delete()
+		await loop_(self, ctx, t)
+
+	@music.command(aliases=['vol'])
+	async def volume(self, ctx: commands.Context, vol: float):
+		await ctx.message.delete()
+		await volume_(self, ctx, vol)
+
+	@music.command(aliases=['s'])
+	async def skip(self, ctx: commands.Context, pos: int = 1):
+		await ctx.message.delete()
+		await skip_(self, ctx, pos)
+
+	@music.command(aliases=['j', 'connect'])
+	async def join(self, ctx: commands.Context, channel: VoiceChannel = None):
+		await ctx.message.delete()
+		await join_(self, ctx, channel)
+
+	@music.command(aliases=['dc', 'disconnect'])
+	async def leave(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await leave_(self, ctx)
+
+	@music.command()
+	async def stop(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await stop_(self, ctx)
+
+	@music.command(aliases=['cd'])
+	async def createdj(self, ctx: commands.Context, *, name: str = 'DJ'):
+		await ctx.message.delete()
+		await create_dj_(self, ctx, name)
+
+	@music.command()
+	async def remove(self, ctx: commands.Context, pos: int):
+		await ctx.message.delete()
+		await remove_(self, ctx, pos)
+
+	@music.command(aliases=['a'])
+	async def alias(self, ctx: commands.Context, alias: str, *, sub: str):
+		await ctx.message.delete()
+		await alias_(self, ctx, alias, sub)
+
+	@music.command(aliases=['t'])
+	async def together(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await together_(self, ctx)
+
+	@music.command()
+	async def fix(self, ctx: commands.Context):
+		await ctx.message.delete()
+		controller = self.controllers[ctx.guild.id]
+
+		controller.reset()
+
+	@commands.group()
+	async def video(self, ctx: commands.Context):
+		...
+
+	@video.command()
+	async def play(self, ctx: commands.Context, *, msg: str):
+		await ctx.message.delete()
+
+	@video.command()
+	async def test(self, ctx: commands.Context):
+		controller = self.vcontrollers[ctx.guild.id]
+		browser = await launch(headless=False, userDataDir="./cmds/music/data")
+
+		page = await browser.newPage()
 
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
@@ -514,6 +625,11 @@ class Music(Cog):
 	async def alias(self, ctx: commands.Context, alias: str, *, sub: str):
 		await ctx.message.delete()
 		await alias_(self, ctx, alias, sub)
+
+	@commands.command()
+	async def together(self, ctx: commands.Context):
+		await ctx.message.delete()
+		await together_(self, ctx)
 
 	@commands.command()
 	async def fix(self, ctx: commands.Context):
