@@ -8,7 +8,7 @@
 .youtube.com	TRUE	/	TRUE	1704117492	PREF	tz=Asia.Taipei&volume=100&repeat=ONE&f6=400
 .youtube.com	TRUE	/	TRUE	1706227945	SAPISID	F1Zv3kn6bevbxTVn/AgqL-jFBSceMq6sDl
 .youtube.com	TRUE	/	FALSE	1706227945	SID	GQjspUkycoRBfUT7VJt9EIOPEZsJ0RQmtWEcjaQNCU-wAMuFyjmh0NB_h2k_Z83MIvzMaA.
-.youtube.com	TRUE	/	FALSE	1672581791	SIDCC	AJi4QfHAyb_oIXURJT9LPmDbqWxtkpnruWFdJmFGwOB5ozP-xJ_oZuYrSIdwMmmSzXeI7H-1WHg
+.youtube.com	TRUE	/	FALSE	1674741366	SIDCC	AJi4QfH10nY6sfzLA_GrK6t0YnFDH1kPK7kgrUaxskFuIeueI2meHrsu5IIV-MUXKzgP6EavgFA
 .youtube.com	TRUE	/	TRUE	1706227945	SSID	A1MPIWp5FYLW0G0YN
 .youtube.com	TRUE	/	TRUE	1658642928	VISITOR_INFO1_LIVE	r2uIdDjULRU
 .youtube.com	TRUE	/	TRUE	0	YSC	NHLWA7bfG7U
@@ -16,6 +16,6 @@
 .youtube.com	TRUE	/	TRUE	1706227945	__Secure-1PSID	GQjspUkycoRBfUT7VJt9EIOPEZsJ0RQmtWEcjaQNCU-wAMuFmZF7PXciQD4N0aMu2wib3A.
 .youtube.com	TRUE	/	TRUE	1706227945	__Secure-3PAPISID	F1Zv3kn6bevbxTVn/AgqL-jFBSceMq6sDl
 .youtube.com	TRUE	/	TRUE	1706227945	__Secure-3PSID	GQjspUkycoRBfUT7VJt9EIOPEZsJ0RQmtWEcjaQNCU-wAMuFmJLb1VkhWad5tOEQvzYTZA.
-.youtube.com	TRUE	/	TRUE	1672581791	__Secure-3PSIDCC	AJi4QfE75_wLyz1o7utvD6osYAdPJQ2UlJaIrPCtUnG53ljg1zmOEv9HBtr6Fo_PHW1RYdfIY6k
+.youtube.com	TRUE	/	TRUE	1674741366	__Secure-3PSIDCC	AJi4QfEmsw0wmct9BQ0w7zklenB_Pp5sdbmaGRq_yoaCO_Xw70x7QIyKIIfzxTTk2L7y8LF7jIw
 .youtube.com	TRUE	/	FALSE	0	wide	1
 payments.youtube.com	FALSE	/	TRUE	0	S	billing-ui-v3=D6nFoqCw6XdhwQMzIoRSyaG8mNhr-IkC:billing-ui-v3-efe=D6nFoqCw6XdhwQMzIoRSyaG8mNhr-IkC

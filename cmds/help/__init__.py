@@ -4,6 +4,8 @@ from core.cog_append import Cog
 from .help_method import BotHelpCommand
 
 class Help(Cog):
+	"""The help for this bot"""
+ 
 	def __init__(self, bot: commands.Bot):
 		self._original_help_command = bot.help_command
 		bot.help_command = BotHelpCommand()

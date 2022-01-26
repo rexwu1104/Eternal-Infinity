@@ -1,4 +1,3 @@
-import asyncio
 from nextcord import (
 	Interaction,
 	ButtonStyle
@@ -20,14 +19,6 @@ from .embeds import (
 )
 
 style = ButtonStyle.grey
-
-class MusicSimilar:
-	def __init__(self, guild_id, controller):
-		self.__dict__ = {
-			controllers: {
-				guild_id: controller
-			}
-		}
 
 class ControlBoard(View):
 	def __init__(self, controller):

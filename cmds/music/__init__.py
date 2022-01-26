@@ -1,14 +1,13 @@
+from http.server import executable
 import re
 import random
 import NPytdl
-import orjson
 import asyncio
 from core.cog_append import Cog
 from functools import (
 	partial,
 	wraps
 )
-from pyppeteer import launch
 from pprint import pprint
 from pysondb import db
 from nextcord.ext import commands
@@ -204,7 +203,7 @@ class AudioVoiceController:
 
 			self.queue[pos] = data
 			self.source = PCMVolumeTransformer(TimeSource(
-					self, data[0].voice_url, **OPTIONS
+					self, data[0].voice_url, executable="C:\\Users\\rexwu\AppData\Roaming\\ffmpeg\\bin\\ffmpeg.exe", **OPTIONS
 				), self.volume
 			)
 
@@ -228,7 +227,7 @@ class AudioVoiceController:
 			self.queue[pos] = loaded
 			self.tmps += data
 			self.source = PCMVolumeTransformer(TimeSource(
-					self, loaded[0].voice_url, **OPTIONS
+					self, loaded[0].voice_url, executable="C:\\Users\\rexwu\AppData\Roaming\\ffmpeg\\bin\\ffmpeg.exe", **OPTIONS
 				), self.volume
 			)
 
@@ -252,7 +251,7 @@ class AudioVoiceController:
 			self.queue[pos] = loaded
 			self.tmps += data
 			self.source = PCMVolumeTransformer(TimeSource(
-					self, loaded[0].voice_url, **OPTIONS
+					self, loaded[0].voice_url, executable="C:\\Users\\rexwu\AppData\Roaming\\ffmpeg\\bin\\ffmpeg.exe", **OPTIONS
 				), self.volume
 			)
 			
@@ -276,7 +275,7 @@ class AudioVoiceController:
 			self.queue[pos] = loaded
 			self.tmps += data
 			self.source = PCMVolumeTransformer(TimeSource(
-					self, loaded[0].voice_url, **OPTIONS
+					self, loaded[0].voice_url, executable="C:\\Users\\rexwu\AppData\Roaming\\ffmpeg\\bin\\ffmpeg.exe", **OPTIONS
 				), self.volume
 			)
 
@@ -294,7 +293,7 @@ class AudioVoiceController:
 
 			self.now_info = self.information[pos]
 			self.source = PCMVolumeTransformer(TimeSource(
-					self, self.queue[pos][0].voice_url, **OPTIONS
+					self, self.queue[pos][0].voice_url, executable="C:\\Users\\rexwu\AppData\Roaming\\ffmpeg\\bin\\ffmpeg.exe", **OPTIONS
 				), self.volume
 			)
 
@@ -407,8 +406,12 @@ class AudioVoiceController:
 		self.time = 0.0
 		self.jump = False
 
+NoneType = type(None)
 def check_voice(ctx: commands.Context):
 	if ctx.author.voice:
+		return True
+
+	if type(ctx.kwargs.get('command', 1)) in [str, NoneType]:
 		return True
 
 	asyncio.run_coroutine_threadsafe(
@@ -423,6 +426,8 @@ def check_voice(ctx: commands.Context):
 	return False
 
 class Music(Cog):
+	"""The music functions for control music convience"""
+    
 	def __init__(self, *args, **kwargs):
 		super().__init__(*args, **kwargs)
 
@@ -475,11 +480,6 @@ class Music(Cog):
 			)
 		elif not before.get_role(dj_id) and after.get_role(dj_id):
 			self.controllers[after.guild.id].DJs.append(after)
-
-	@commands.group()
-	async def music(self, ctx: commands.Context):
-		"""All of music functions"""
-		...
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['p'])

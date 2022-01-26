@@ -11,7 +11,6 @@ bot = commands.AutoShardedBot(
 	command_prefix = 'ei!',
 	intents = intents
 )
-# bot.remove_command('help')
 
 @bot.event
 async def on_ready():
@@ -22,15 +21,6 @@ async def on_ready():
 			url = 'https://www.twitch.tv/yee6nextcord'
 		)
 	)
-
-	if bot.loop.is_running():
-		from multiprocessing import Process
-		from web.backend import start_server
-		proc = Process(
-			target = start_server,
-			daemon = True
-		)
-		proc.start()
 	
 	for fin in os.listdir('./cmds'):
 		if fin.endswith('.py'):

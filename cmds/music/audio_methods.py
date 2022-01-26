@@ -2,7 +2,6 @@ import nextcord
 from nextcord.ext import (
 	commands
 )
-import pysondb
 from pysondb import db
 from .embeds import (
 	info_embed,
