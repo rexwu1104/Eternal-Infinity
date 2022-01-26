@@ -8,7 +8,7 @@ def is_owner(ctx: commands.Context) -> bool:
 
 intents = nc.Intents.all()
 bot = commands.AutoShardedBot(
-	command_prefix = 'e!',
+	command_prefix = 'ei!',
 	intents = intents
 )
 # bot.remove_command('help')
@@ -18,7 +18,7 @@ async def on_ready():
 	bot.togetherControl = await DiscordTogether(os.environ['token'])
 	await bot.change_presence(
 		activity = nc.Streaming(
-			name = 'e!help',
+			name = 'ei!help',
 			url = 'https://www.twitch.tv/yee6nextcord'
 		)
 	)

@@ -111,6 +111,15 @@ class AudioVoiceController:
 			if member.get_role(dj_id) is not None:
 				self.DJs.append(member)
 
+	def find_id(self, uri: str):
+		regex = re.compile(r'(?:https?://)?(?:youtu\.be/|(?:(?:m|www)\.)*youtube\.com/watch\?(?:.+&)*v=)([\w\-]+)(?:[?&].+)*')
+		match = re.match(regex, uri)
+
+		id = match.group(1)
+		print(id)
+
+		return id
+
 	def is_url(self, url: str):
 		return 1 in map(
 			lambda r: 1 if r.search(url) else 0,
@@ -184,11 +193,11 @@ class AudioVoiceController:
 		if type(data[0]) == NPytdl.YoutubeVideo:
 			if type(self.information[pos]) == Empty:
 				self.information[pos] = (await ysdl.resultList(
-					data[0].url
+					self.find_id(data[0].url)
 				))[0]
 			elif not self.information[pos]:
 				self.information += [(await ysdl.resultList(
-					data[0].url
+					self.find_id(data[0].url)
 				))[0]]
 
 			self.now_info = self.information[pos]
@@ -398,16 +407,20 @@ class AudioVoiceController:
 		self.time = 0.0
 		self.jump = False
 
-class VideoVoiceController:
-	def __init__(self):
-		self.queue = []
-		self.tmps = []
-		self.information = []
-		self.now_info = None
-		self.client = None
-		self.channel = None
-		self.now_pos = None
-		self.jump = False
+def check_voice(ctx: commands.Context):
+	if ctx.author.voice:
+		return True
+
+	asyncio.run_coroutine_threadsafe(
+		ctx.message.delete(),
+		ctx.bot.loop
+	)
+	asyncio.run_coroutine_threadsafe(
+		ctx.send("**You must to join a voice channel.**"),
+		ctx.bot.loop
+	)
+
+	return False
 
 class Music(Cog):
 	def __init__(self, *args, **kwargs):
@@ -430,7 +443,6 @@ class Music(Cog):
 				'create_dj': create_dj_
 			})
 			self.controllers[guild.id].load_dj(guild)
-			self.vcontrollers[guild.id] = VideoVoiceController()
 
 	@commands.Cog.listener()
 	async def on_guild_join(self, guild: Guild):
@@ -447,7 +459,6 @@ class Music(Cog):
 			'stop': stop_,
 			'create_dj': create_dj_
 		})
-		self.vcontrollers[guild.id] = VideoVoiceController()
 
 	@commands.Cog.listener()
 	async def on_member_update(self, before, after):
@@ -467,177 +478,117 @@ class Music(Cog):
 
 	@commands.group()
 	async def music(self, ctx: commands.Context):
+		"""All of music functions"""
 		...
 
-	@music.command(aliases=['p'])
-	async def play(self, ctx: commands.Context, *, msg: str):
-		await ctx.message.delete()
-		await play_(self, ctx, msg)
-
-	@music.command()
-	async def search(self, ctx: commands.Context, *, query: str):
-		await ctx.message.delete()
-		await search_(self, ctx, query)
-
-	@music.command(aliases=['q'])
-	async def queue(self, ctx: commands.Context):
-		await ctx.message.delete()
-		await queue_(self, ctx)
-
-	@music.command(aliases=['np'])
-	async def nowplay(self, ctx: commands.Context):
-		await ctx.message.delete()
-		await nowplay_(self, ctx)
-
-	@music.command()
-	async def loop(self, ctx: commands.Context, t: str = None):
-		await ctx.message.delete()
-		await loop_(self, ctx, t)
-
-	@music.command(aliases=['vol'])
-	async def volume(self, ctx: commands.Context, vol: float):
-		await ctx.message.delete()
-		await volume_(self, ctx, vol)
-
-	@music.command(aliases=['s'])
-	async def skip(self, ctx: commands.Context, pos: int = 1):
-		await ctx.message.delete()
-		await skip_(self, ctx, pos)
-
-	@music.command(aliases=['j', 'connect'])
-	async def join(self, ctx: commands.Context, channel: VoiceChannel = None):
-		await ctx.message.delete()
-		await join_(self, ctx, channel)
-
-	@music.command(aliases=['dc', 'disconnect'])
-	async def leave(self, ctx: commands.Context):
-		await ctx.message.delete()
-		await leave_(self, ctx)
-
-	@music.command()
-	async def stop(self, ctx: commands.Context):
-		await ctx.message.delete()
-		await stop_(self, ctx)
-
-	@music.command(aliases=['cd'])
-	async def createdj(self, ctx: commands.Context, *, name: str = 'DJ'):
-		await ctx.message.delete()
-		await create_dj_(self, ctx, name)
-
-	@music.command()
-	async def remove(self, ctx: commands.Context, pos: int):
-		await ctx.message.delete()
-		await remove_(self, ctx, pos)
-
-	@music.command(aliases=['a'])
-	async def alias(self, ctx: commands.Context, alias: str, *, sub: str):
-		await ctx.message.delete()
-		await alias_(self, ctx, alias, sub)
-
-	@music.command(aliases=['t'])
-	async def together(self, ctx: commands.Context):
-		await ctx.message.delete()
-		await together_(self, ctx)
-
-	@music.command()
-	async def fix(self, ctx: commands.Context):
-		await ctx.message.delete()
-		controller = self.controllers[ctx.guild.id]
-
-		controller.reset()
-
-	@commands.group()
-	async def video(self, ctx: commands.Context):
-		...
-
-	@video.command()
-	async def play(self, ctx: commands.Context, *, msg: str):
-		await ctx.message.delete()
-
-	@video.command()
-	async def test(self, ctx: commands.Context):
-		controller = self.vcontrollers[ctx.guild.id]
-		browser = await launch(headless=False, userDataDir="./cmds/music/data")
-
-		page = await browser.newPage()
-
+	@commands.check(check_voice)
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
+		"""Play a song with query or url"""
 		await ctx.message.delete()
 		await play_(self, ctx, msg)
 
+	@commands.check(check_voice)
 	@commands.command()
 	async def search(self, ctx: commands.Context, *, query: str):
+		"""Search with query and send a select menu"""
 		await ctx.message.delete()
 		await search_(self, ctx, query)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['q'])
 	async def queue(self, ctx: commands.Context):
+		"""The queue of songs after now playing"""
 		await ctx.message.delete()
 		await queue_(self, ctx)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['np'])
 	async def nowplay(self, ctx: commands.Context):
+		"""The song which is playing now"""
 		await ctx.message.delete()
 		await nowplay_(self, ctx)
 
+	@commands.check(check_voice)
 	@commands.command()
 	async def loop(self, ctx: commands.Context, t: str = None):
+		"""Loop the song, queue or a range"""
 		await ctx.message.delete()
 		await loop_(self, ctx, t)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['vol'])
 	async def volume(self, ctx: commands.Context, vol: float):
+		"""Adjust the volume"""
 		await ctx.message.delete()
 		await volume_(self, ctx, vol)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['s'])
 	async def skip(self, ctx: commands.Context, pos: int = 1):
+		"""Skip the song and jump to the position"""
 		await ctx.message.delete()
 		await skip_(self, ctx, pos)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['j', 'connect'])
 	async def join(self, ctx: commands.Context, channel: VoiceChannel = None):
+		"""Join to a voice channel"""
 		await ctx.message.delete()
 		await join_(self, ctx, channel)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['dc', 'disconnect'])
 	async def leave(self, ctx: commands.Context):
+		"""Leave the voice channel"""
 		await ctx.message.delete()
 		await leave_(self, ctx)
 
-	@commands.command()
+	@commands.check(check_voice)
+	@commands.command(aliases=['pause'])
 	async def stop(self, ctx: commands.Context):
+		"""Pause the song"""
 		await ctx.message.delete()
 		await stop_(self, ctx)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['cd'])
 	async def createdj(self, ctx: commands.Context, *, name: str = 'DJ'):
+		"""Create the dj role"""
 		await ctx.message.delete()
 		await create_dj_(self, ctx, name)
 
+	@commands.check(check_voice)
 	@commands.command()
 	async def remove(self, ctx: commands.Context, pos: int):
+		"""Remove the song of the position"""
 		await ctx.message.delete()
 		await remove_(self, ctx, pos)
 
+	@commands.check(check_voice)
 	@commands.command(aliases=['a'])
 	async def alias(self, ctx: commands.Context, alias: str, *, sub: str):
+		"""Create a alias to play music"""
 		await ctx.message.delete()
 		await alias_(self, ctx, alias, sub)
 
-	@commands.command()
+	@commands.check(check_voice)
+	@commands.command(aliases=['t'])
 	async def together(self, ctx: commands.Context):
+		"""Create a 'watch together' link"""
 		await ctx.message.delete()
 		await together_(self, ctx)
 
+	@commands.check(check_voice)
 	@commands.command()
 	async def fix(self, ctx: commands.Context):
+		"""Fix some error"""
 		await ctx.message.delete()
 		controller = self.controllers[ctx.guild.id]
 
 		controller.reset()
 
+	@commands.check(check_voice)
 	@commands.command()
 	async def cc(self, ctx: commands.Context, sub: str = None):
 		controller = self.controllers[ctx.guild.id]

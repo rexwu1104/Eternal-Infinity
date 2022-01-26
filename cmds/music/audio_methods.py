@@ -37,6 +37,9 @@ async def play_(self, ctx: commands.Context, q: str):
 		controller.channel = ctx.author.voice.channel
 		controller.client = await controller.channel.connect()
 
+	msg = await ctx.send("**loading...**")
+	controller.message = msg
+
 	if q.find('choice>') != -1:
 		choices = q.split(' ')
 
@@ -74,14 +77,11 @@ async def play_(self, ctx: commands.Context, q: str):
 		await controller.load(-1)
 		await controller.load(old_pos, loaded=True)
 
-	if controller.message is None:
-		msg = await ctx.send(
-			view=ControlBoard(controller),
-			embed=info_embed(controller)
-		)
-		controller.message = msg
-	else:
-		await controller.message.edit(embed=info_embed(controller))
+	await controller.message.edit(
+		view=ControlBoard(controller),
+		embed=info_embed(controller),
+		content=None
+	)
 
 async def search_(self, ctx: commands.Context, q: str):
 	controller = self.controllers[ctx.guild.id]
