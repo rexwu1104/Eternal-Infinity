@@ -47,6 +47,18 @@ async def unload(ctx: commands.Context, file_name: str):
 async def reload(ctx: commands.Context, file_name: str):
 	bot.reload_extension(f'cmds.{file_name}')
 	await ctx.message.delete()
+ 
+@bot.command()
+@commands.check(is_owner)
+async def guilds(ctx: commands.Context):
+    await ctx.message.delete()
+    for guild in bot.guilds:
+        try:
+            invites = await guild.invites()
+        except:
+            continue
+        
+        print(guild.name, invites[0].url if len(invites) >= 1 else "No link")
 
 if __name__ == '__main__':
 	bot.run(os.environ['token'])

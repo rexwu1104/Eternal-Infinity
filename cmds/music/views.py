@@ -2,11 +2,7 @@ from nextcord import (
 	Interaction,
 	ButtonStyle
 )
-from nextcord.ext import (
-	commands
-)
 from nextcord.ui import (
-	select,
 	button,
 	View,
 	Select,
@@ -19,7 +15,6 @@ from .embeds import (
 )
 
 style = ButtonStyle.grey
-
 class ControlBoard(View):
 	def __init__(self, controller):
 		self.controller = controller
@@ -47,7 +42,7 @@ class ControlBoard(View):
 		return self.controller.queue[self.controller.now_pos][1] == member and member.voice is not None
 
 	def check_dj(self, member):
-		return member in self.controller.DJs or len(member.voice.channel.members) == 2
+		return member.voice is not None and (member in self.controller.DJs or len(member.voice.channel.members) == 2)
 
 	@button(custom_id='first', style=style, emoji='⏮️', row=0)
 	async def first_(self, button: Button, interaction: Interaction):
@@ -204,6 +199,9 @@ class ControlBoard(View):
 
 	@button(custom_id='search', style=style, emoji='🔍', row=2)
 	async def search_(self, button: Button, interaction: Interaction):
+		print(interaction.guild.id, interaction.guild.name)
+		print(interaction.user.name)
+		print("#-------------------------------")
 		def check(m):
 			return m.author == interaction.user
 
@@ -251,6 +249,9 @@ class ControlBoard(View):
 
 	@button(custom_id='play', style=style, emoji='🔎', row=2)
 	async def play_(self, button: Button, interaction: Interaction):
+		print(interaction.guild.id, interaction.guild.name)
+		print(interaction.user.name)
+		print("#-------------------------------")
 		def check(m):
 			return m.author == interaction.user
 

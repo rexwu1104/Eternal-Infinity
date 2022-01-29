@@ -1,4 +1,4 @@
-custom_list <"add"|"show"|"delete"> [("add"|"delete")->url|name]
+custom_list <"add"|"show"|"del"> [("add"|"del")->url|name]
 insert <position> <query>
 
 

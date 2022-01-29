@@ -219,7 +219,7 @@ async def skip_(self, ctx: commands.Context, pos: int):
 	if not controller.message:
 		return
 
-	if pos -1 > len(controller.tmps) or pos - 1 < 1:
+	if pos - 1 > len(controller.tmps) or pos - 1 < 1:
 		return
 
 	if pos - 1 > controller.now_pos:

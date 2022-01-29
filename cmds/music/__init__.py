@@ -1,4 +1,3 @@
-from http.server import executable
 import re
 import random
 import NPytdl
@@ -47,9 +46,6 @@ from .audio_methods import (
 )
 from .embeds import (
 	info_embed
-)
-from .functions import (
-	_duration_to_second
 )
 
 OPTIONS = {
@@ -115,7 +111,6 @@ class AudioVoiceController:
 		match = re.match(regex, uri)
 
 		id = match.group(1)
-		print(id)
 
 		return id
 
@@ -409,6 +404,10 @@ class AudioVoiceController:
 NoneType = type(None)
 def check_voice(ctx: commands.Context):
 	if ctx.author.voice:
+		print(ctx.guild.id, ctx.guild.name)
+		print(ctx.author.name)
+		print(ctx.message.content)
+		print("#-------------------------------")
 		return True
 
 	if type(ctx.kwargs.get('command', 1)) in [str, NoneType]:
@@ -484,111 +483,225 @@ class Music(Cog):
 	@commands.check(check_voice)
 	@commands.command(aliases=['p'])
 	async def play(self, ctx: commands.Context, *, msg: str):
-		"""Play a song with query or url"""
+		"""
+			**Play a song with query or url or take a choice**
+
+			__Example:__
+			```py
+			ei!play kanaria king or
+			ei!play choice> king or
+			ei!play choice> king 0
+			```
+		"""
 		await ctx.message.delete()
 		await play_(self, ctx, msg)
 
 	@commands.check(check_voice)
 	@commands.command()
 	async def search(self, ctx: commands.Context, *, query: str):
-		"""Search with query and send a select menu"""
+		"""
+  			**Search with query and send a select menu**
+
+			__Example:__
+			```py
+			ei!search kanaria king
+			```
+		"""
 		await ctx.message.delete()
 		await search_(self, ctx, query)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['q'])
 	async def queue(self, ctx: commands.Context):
-		"""The queue of songs after now playing"""
+		"""
+  			**The queue of songs after now playing**
+
+			__Example:__
+			```py
+			ei!queue
+			```
+		"""
 		await ctx.message.delete()
 		await queue_(self, ctx)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['np'])
 	async def nowplay(self, ctx: commands.Context):
-		"""The song which is playing now"""
+		"""
+  			**The song which is playing now**
+
+			__Example:__
+			```py
+			ei!nowplay
+			```
+		"""
 		await ctx.message.delete()
 		await nowplay_(self, ctx)
 
 	@commands.check(check_voice)
 	@commands.command()
 	async def loop(self, ctx: commands.Context, t: str = None):
-		"""Loop the song, queue or a range"""
+		"""
+  			**Loop the song, queue or a range**
+
+			__Example:__
+			```py
+			ei!loop or
+			ei!loop 1 or
+			ei!loop 1-10 or
+			ei!loop 1~10
+			```
+		"""
 		await ctx.message.delete()
 		await loop_(self, ctx, t)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['vol'])
 	async def volume(self, ctx: commands.Context, vol: float):
-		"""Adjust the volume"""
+		"""
+  			**Adjust the volume**
+
+			__Example:__
+			```py
+			ei!volume 1.1
+			```
+		"""
 		await ctx.message.delete()
 		await volume_(self, ctx, vol)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['s'])
-	async def skip(self, ctx: commands.Context, pos: int = 1):
-		"""Skip the song and jump to the position"""
+	async def skip(self, ctx: commands.Context, pos: int = 2):
+		"""
+  			**Skip the song which is playing now and jump to the position**
+
+			__Example:__
+			```py
+			ei!skip or 
+			ei!skip 10
+			```
+		"""
 		await ctx.message.delete()
 		await skip_(self, ctx, pos)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['j', 'connect'])
 	async def join(self, ctx: commands.Context, channel: VoiceChannel = None):
-		"""Join to a voice channel"""
+		"""
+  			**Join to a voice channel**
+
+			__Example:__
+			```py
+			ei!join or
+			ei!join 819831765006548992
+			```
+		"""
 		await ctx.message.delete()
 		await join_(self, ctx, channel)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['dc', 'disconnect'])
 	async def leave(self, ctx: commands.Context):
-		"""Leave the voice channel"""
+		"""
+  			**Leave the voice channel**
+
+			__Example:__
+			```py
+			ei!leave
+			```
+		"""
 		await ctx.message.delete()
 		await leave_(self, ctx)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['pause'])
 	async def stop(self, ctx: commands.Context):
-		"""Pause the song"""
+		"""
+  			**Pause the song**
+
+			__Example:__
+			```py
+			ei!stop
+			```
+		"""
 		await ctx.message.delete()
 		await stop_(self, ctx)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['cd'])
 	async def createdj(self, ctx: commands.Context, *, name: str = 'DJ'):
-		"""Create the dj role"""
+		"""
+  			**Create the dj role**
+
+			__Example:__
+			```py
+			ei!createdj or
+			ei!createdj dj_name
+			```
+		"""
 		await ctx.message.delete()
 		await create_dj_(self, ctx, name)
 
 	@commands.check(check_voice)
 	@commands.command()
 	async def remove(self, ctx: commands.Context, pos: int):
-		"""Remove the song of the position"""
+		"""
+  			**Remove the song of the position**
+
+			__Example:__
+			```py
+			ei!remove 2
+			```
+		"""
 		await ctx.message.delete()
 		await remove_(self, ctx, pos)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['a'])
 	async def alias(self, ctx: commands.Context, alias: str, *, sub: str):
-		"""Create a alias to play music"""
+		"""
+  			**Create a alias to play music**
+
+			__Example:__
+			```py
+			ei!alias king kanaria king
+			```
+		"""
 		await ctx.message.delete()
 		await alias_(self, ctx, alias, sub)
 
 	@commands.check(check_voice)
 	@commands.command(aliases=['t'])
 	async def together(self, ctx: commands.Context):
-		"""Create a 'watch together' link"""
+		"""
+  			**Create a 'watch together' link**
+
+			__Example:__
+			```py
+			ei!together
+			```
+		"""
 		await ctx.message.delete()
 		await together_(self, ctx)
 
 	@commands.check(check_voice)
 	@commands.command()
 	async def fix(self, ctx: commands.Context):
-		"""Fix some error"""
+		"""
+  			**Fix some error**
+
+			__Example:__
+			```py
+			ei!fix
+			```
+		"""
 		await ctx.message.delete()
 		controller = self.controllers[ctx.guild.id]
 
 		controller.reset()
 
 	@commands.check(check_voice)
+	@commands.check(is_owner)
 	@commands.command()
 	async def cc(self, ctx: commands.Context, sub: str = None):
 		controller = self.controllers[ctx.guild.id]
