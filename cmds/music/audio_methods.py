@@ -36,15 +36,16 @@ async def play_(self, ctx: commands.Context, q: str):
 		controller.channel = ctx.author.voice.channel
 		controller.client = await controller.channel.connect()
 
-	msg = await ctx.send("**loading...**")
-	controller.message = msg
+	if not controller.message:
+		msg = await ctx.send("**loading...**")
+		controller.message = msg
 
 	if q.find('choice>') != -1:
 		choices = q.split(' ')
 
 		if choices[-1].isdigit():
 			alias = choices[1]
-			idx = choices[2]
+			idx = int(choices[-1])
 
 			data = member_db.getBy({'member_id': ctx.author.id})
 			if len(data) == 0:

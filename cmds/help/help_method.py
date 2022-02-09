@@ -117,6 +117,7 @@ class BotHelpCommand(commands.HelpCommand):
                 return ret
             
         return await HelpView.create()
+    
     async def _help_embed(
         self,
         title: str,
@@ -134,7 +135,7 @@ class BotHelpCommand(commands.HelpCommand):
         if command_set:
             filtered = await self.filter_commands(command_set, sort=True)
             for command in filtered:
-                embed.add_field(name=self.get_command_signature(command), value=f"Use `{self.context.clean_prefix}help {command.name}` to get help", inline=False)
+                embed.add_field(name=self.get_command_signature(command), value=f"Use `{self.context.clean_prefix}help {command.name}` to get help", inline=True)
         elif mapping:
             for cog, command_set in mapping.items():
                 filtered = await self.filter_commands(command_set, sort=True)
