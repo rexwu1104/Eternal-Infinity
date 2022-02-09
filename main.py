@@ -56,12 +56,12 @@ async def guilds(ctx: commands.Context):
         
         print(guild.name, invites[0].url if len(invites) >= 1 else "No link")
 
-#@bot.event
-#async def on_command_error(ctx: commands.Context, err: Exception):
-#    print(err.__dict__)
-#    err = err.args[0].split(': ')[-1].strip(' ')
-#    msg = await ctx.send('**' + err + '**')
-#    await msg.delete(delay=5)
+@bot.event
+async def on_command_error(ctx: commands.Context, err: Exception):
+   print(err.__dict__)
+   err = err.args[0].split(': ')[-1].strip(' ')
+   msg = await ctx.send('**' + err + '**')
+   await msg.delete(delay=5)
 
 if __name__ == '__main__':
 	bot.run('NzIzNTQzODg4Nzg2MzU4MzA0.XuzKwQ.ZgZaLqOvXLvlp0fmFQzLviZafOw')
