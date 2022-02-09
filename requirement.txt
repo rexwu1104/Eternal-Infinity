@@ -1,8 +1,0 @@
-nextcord[speed]>=2.0.0a3
-discord-together==1.2.3
-fastapi>=0.70.0
-uvicorn>=0.15.0
-npytdl>=4.1.0b2
-orjson>=3.6.5
-pynacl>=1.4.0
-pysondb==1.5.7
