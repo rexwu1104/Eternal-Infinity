@@ -1,8 +1,0 @@
-custom_list <"add"|"show"|"del"> [("add"|"del")->url|name]
-insert <position> <query>
-
-
-
-
-url:
-https://gist.github.com/InterStella0/b78488fb28cadf279dfd3164b9f0cf96#good-way
